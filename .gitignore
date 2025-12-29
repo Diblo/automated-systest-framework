@@ -1,3 +1,18 @@
+################################################
+###            ⚠️  IMPORTANT  ⚠️             ###
+###                                          ###
+###   Keep .gitignore and debian/ in sync!   ###
+###                                          ###
+################################################
+# Any patterns added or updated in .gitignore
+# must also be added to:
+#
+#     debian/source/options
+#
+# This ensures dpkg-source correctly excludes
+# the same files from the upstream source tarball.
+################################################
+
 # --- PYTHON ---
 # Runtime & Cache
 *.py[cod]
@@ -38,3 +53,6 @@ Thumbs.db
 # Secrets & Config
 .env
 !mock_suite/.env
+
+# Build artifacts
+build/

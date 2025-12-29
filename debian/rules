@@ -1,0 +1,39 @@
+#!/usr/bin/make -f
+INSTALL_VENV := /usr/share/systest/venv
+BUILD_VENV := $(CURDIR)/debian/systest$(INSTALL_VENV)
+
+# Format: Source:Target:Description:SeeAlsoReference
+# - Use '_' to create spaces in the description.
+# - Use '+' to separate multiple references (e.g. systest(2)+systest(7)).
+MANPAGES := \
+	docs/usage.md:debian/man/systest.1:Usage:systest(7) \
+	docs/test_suite.md:debian/man/systest.7:Test_Suite_Guide:systest(1)
+
+%:
+	dh $@ --buildsystem=none
+
+override_dh_auto_build:
+	mkdir -p debian/man
+
+	$(foreach page,$(MANPAGES),\
+		$(eval SRC  := $(word 1,$(subst :, ,$(page)))) \
+		$(eval DST  := $(word 2,$(subst :, ,$(page)))) \
+		$(eval DESC := $(subst _, ,$(word 3,$(subst :, ,$(page))))) \
+		$(eval REF  := $(word 4,$(subst :, ,$(page)))) \
+		\
+		pandoc -s -t man $(SRC) -o $(DST); \
+		grep -q "^\.SH NAME" $(DST) || sed -i '1a .SH NAME\nsystest' $(DST); \
+		sed -i '/^\.SH NAME/{n;s/^.*$$/systest \\- $(DESC)/;}' $(DST); \
+		printf ".SH SEE ALSO\n$(REF)\n" >> $(DST); \
+	)
+
+override_dh_auto_install:
+	# Create production virtual environment for isolated execution
+	sh ./create-venv.sh --create-production "$(BUILD_VENV)"
+
+	# Fix absolute paths in scripts
+	find "$(BUILD_VENV)/bin" -type f -exec grep -Iq . {} \; -exec sed -i "s|$(BUILD_VENV)|$(INSTALL_VENV)|" {} +
+
+override_dh_installman:
+	# Install all generated man pages
+	dh_installman debian/man/*

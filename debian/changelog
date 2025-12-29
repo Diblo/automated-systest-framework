@@ -1,0 +1,5 @@
+systest-framework (0.0.0) unstable; urgency=low
+
+  * Initial release of the Automated System Test Framework.
+
+-- Henrik Ankersø <noreply@diblo.dk>  Tue, 18 Nov 2025 16:00:00 +0100

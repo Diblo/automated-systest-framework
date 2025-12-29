@@ -10,6 +10,7 @@ writing clear, executable **behavioral specifications**.
 1. [Backward Compatibility](#backward-compatibility)
 1. [Defining Command Line Options](#defining-command-line-options)
 1. [Running Internal Tests](#running-internal-tests)
+1. [Build Debian/Ubuntu Package](#build-debianubuntu-package)
 1. [Creating a Formatter](#creating-a-formatter)
 1. [Creating a Reporter](#creating-a-reporter)
 
@@ -22,6 +23,7 @@ separate from product-specific test suites, promoting a clean, reusable architec
 
 ```text
 +-- automated-systest-framework/
+│   +-- debian/
 │   +-- docs/
 │   +-- mock_suite/                   # Example/Placeholder for a Test Suite.
 │   +-- src/
@@ -51,6 +53,7 @@ separate from product-specific test suites, promoting a clean, reusable architec
 │   │   │   +-- *.py
 │   │   +-- conftest.py
 │   │   +-- support.py
+│   +-- build-deb.sh
 │   +-- create-venv.sh
 │   +-- example.env                   # Example Configuration/Environment Variables.
 │   +-- setup.py
@@ -194,6 +197,24 @@ The following steps ensure the framework's internal functionality is validated u
 ```shell
 .venv/bin/pytest tests/integration/*
 ```
+
+## Build Debian/Ubuntu Package
+
+The framework can be packaged into a Debian (`.deb`) file for easy installation on Debian or Ubuntu systems.
+
+### Build Command
+
+Execute the dedicated build script from the project root directory:
+
+```shell
+sudo sh ./build-deb.sh --version 1.2.3
+```
+
+### Maintenance Note
+
+It is crucial to maintain synchronization between the project's main `.gitignore` file and the Debian source
+configuration file, `debian/source/options`. This ensures that unnecessary files and build artifacts are correctly
+excluded from the final `.deb` package.
 
 ## Creating a Formatter
 

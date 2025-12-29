@@ -1,0 +1,37 @@
+# Git internal
+tar-ignore = .git
+
+# Python: Runtime & Cache
+tar-ignore = *.py[cod]
+tar-ignore = __pycache__
+
+# Python: Packaging & Build (PIP/Setuptools)
+tar-ignore = dist
+tar-ignore = *.egg-info
+
+# Python: Virtual Env & Testing
+tar-ignore = .venv
+tar-ignore = .pytest_cache
+
+# IDEs & Editors
+tar-ignore = .idea
+tar-ignore = .vscode
+
+# OS & Files
+tar-ignore = .DS_Store
+tar-ignore = Thumbs.db
+tar-ignore = *.app
+tar-ignore = *.exe
+
+# Media
+tar-ignore = *.mp4
+tar-ignore = *.tiff
+tar-ignore = *.avi
+tar-ignore = *.flv
+tar-ignore = *.mov
+tar-ignore = *.wmv
+
+# Project specific
+tar-ignore = .env
+tar-ignore = !mock_suite/.env
+tar-ignore = build

@@ -3,7 +3,10 @@ from typing import Set
 
 from .types import Options
 
-VERSION: str = "0.0.0-dev"
+try:
+    VERSION: str = (Path(__file__).parent / "VERSION").read_text().strip()
+except FileNotFoundError:
+    VERSION: str = "0.0.0-dev"
 
 OPTIONS: Options = [
     (
