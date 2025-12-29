@@ -31,6 +31,7 @@ from ..constants import (
     VERSION,
 )
 from ..types import CommandArgs, DefaultValues, Options, override
+from .reporter.zephyr import ZephyrReporter
 from .wrapper import ReporterWrapper
 
 __all__ = ["Configuration"]
@@ -281,6 +282,7 @@ class Configuration(BehaveConfiguration):
         "suites_directory": DEFAULT_SUITES_PATH,
         "suite": None,
         "suite_create": None,
+        "cycle_id": None,
     }
 
     # This will be set by the runner
@@ -515,7 +517,8 @@ class Configuration(BehaveConfiguration):
         self.run_version = suite_config.framework_version
 
     def setup_systest_reporters(self):
-        pass
+        if self.cycle_id:
+            self.reporters.append(ZephyrReporter(self))
 
     def wrap_reporters(self):
         self.reporters = [ReporterWrapper(reporter) for reporter in self.reporters if isinstance(reporter, Reporter)]

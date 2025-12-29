@@ -136,6 +136,7 @@ TEST_OPTIONS_MAP: OptionsMap = (
     OptionConfig(
         arg="--create-suite", input="new_suite_name", attr=ConfigAttr(name="create_suite_name", value="new_suite_name")
     ),
+    OptionConfig(arg="--cycle-id", input="SIR-1745", attr=ConfigAttr(name="cycle_id", value="SIR-1745")),
     # --- Verbosity, Color, and Metadata ---
     OptionConfig(arg="--version", attr=ConfigAttr(name="version", value=True)),
     OptionConfig(arg="--verbose", attr=ConfigAttr(name="verbose", value=True)),

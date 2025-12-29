@@ -31,6 +31,7 @@ OPTIONS: Options = [
             help="Creates a new test suite directory structure, named by the argument.",
         ),
     ),
+    (("--cycle-id",), dict(dest="cycle_id", action="store", type=str, help="Zephyr test cycle id/key (e.g., SIR-R3).")),
     (("--config",), dict(dest="config", action="store", type=str, help="Specify the path to a configuration file.")),
 ]
 

@@ -139,6 +139,12 @@ Creates a new test suite directory structure, named by the argument.
 
 (environment variable: None)
 
+**--cycle-id CYCLE_ID**
+
+Zephyr test cycle id/key (e.g., SIR-R3).
+
+(environment variable: `SYSTEST_CYCLE_ID`)
+
 **--config CONFIG**
 
 Specify the path to a configuration file.
@@ -546,6 +552,9 @@ lower-priority sources (Levels 1-4), which follow the normal order.
 # The primary directory where the framework looks for test suites.
 # If left empty, the framework uses its default location.
 SYSTEST_SUITES_DIRECTORY=./suites
+
+# Required for Zephyr reporting (a key or ID)
+SYSTEST_CYCLE_ID=TEST-CYCLE-12345
 
 # ----------------------------------------------------------------------
 # BEHAVE GENERAL CONFIGURATION
