@@ -1,0 +1,40 @@
+# --- PYTHON ---
+# Runtime & Cache
+*.py[cod]
+__pycache__/
+
+# PIP
+dist/
+
+# Setuptools
+*.egg-info/
+
+# Virtual environment
+.venv/
+
+# Testing
+.pytest_cache/
+
+# --- IDEs & EDITORS ---
+.idea/
+.vscode/
+
+# --- OS & FILES ---
+.DS_Store
+Thumbs.db
+*.app
+*.exe
+*.war
+
+# --- MEDIA ---
+*.mp4
+*.tiff
+*.avi
+*.flv
+*.mov
+*.wmv
+
+# --- PROJECT SPECIFIC ---
+# Secrets & Config
+.env
+!mock_suite/.env

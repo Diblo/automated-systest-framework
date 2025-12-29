@@ -1,0 +1,16 @@
+# Defines the specific Python dependencies required for running the scenarios within this test suite.
+#
+# This file acts as a manifest and is automatically processed by the systest runner before test execution.
+#
+# Examples:
+#
+# Exact version
+# requests==2.1.1
+#
+# Minimum required version
+# requests>=2.1.1
+#
+# Compatible release (Recommended)
+# requests~=2.0.1      # >= 2.0.1, but < 2.1.0
+# requests~=2.0        # >= 2.0.0, but < 3.0.0
+# requests<3.0,>=2.0.1 # >= 2.0.1, but < 3.0.0

@@ -1,0 +1,64 @@
+#!/usr/bin/env sh
+set -e
+
+# --- Determine Environment and Path ---
+SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+
+# Detect if script is running inside <repo>/src/bin
+src_dir="$(dirname "${SCRIPT_DIR}")"
+
+case "${src_dir}" in
+  */src)
+    IS_SOURCE_USED="true"
+
+    VENV_DIR="${src_dir}/../.venv"
+    if [ ! -d "${VENV_DIR}" ]; then
+      echo "Error: Detected source code environment, but .venv directory is missing." >&2
+      echo "Expected .venv at: ${VENV_DIR}" >&2
+      exit 1
+    fi
+
+    VENV_ABS="$(readlink -f "${VENV_DIR}")"
+    BIN_PATH="${VENV_ABS}/bin/python3"
+    if [ ! -x "${BIN_PATH}" ]; then
+      echo "Error: .venv exists, but python3 executable is missing or not executable." >&2
+      echo "Expected executable at: ${BIN_PATH}" >&2
+      exit 1
+    fi
+
+    # Add src_dir to PYTHONPATH
+    # shellcheck disable=SC2195
+    case ":${PYTHONPATH}:" in
+      *":${src_dir}:"*) ;;
+      :) PYTHONPATH="${src_dir}" ;;
+      *) PYTHONPATH="${src_dir}:${PYTHONPATH}" ;;
+    esac
+    ;;
+  *)
+    IS_SOURCE_USED="false"
+
+    # Running from packaged install
+    if [ -x "${SCRIPT_DIR}/python3" ]; then
+      BIN_PATH="${SCRIPT_DIR}/python3"
+    else
+      # Fallback to the global python3
+      SYS_PYTHON="$(command -v python3 || true)"
+
+      if [ -z "${SYS_PYTHON}" ]; then
+        echo "Error: Unable to find 'python3' in PATH." >&2
+        exit 1
+      fi
+
+      BIN_PATH="$(readlink -f "${SYS_PYTHON}")"
+
+      if [ ! -x "${BIN_PATH}" ]; then
+        echo "Error: Python executable is not executable at: ${BIN_PATH}" >&2
+        exit 1
+      fi
+    fi
+    ;;
+esac
+
+# --- Execute Application ---
+# Note: The 'exec' command is used here to replace the current shell process, respecting the exit code.
+exec env _SYSTEST_SOURCE="${IS_SOURCE_USED}" PYTHONPATH="${PYTHONPATH}" "${BIN_PATH}" -m systest "$@"
