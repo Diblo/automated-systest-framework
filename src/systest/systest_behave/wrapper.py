@@ -25,7 +25,7 @@ class ModelWrapper(typing.Generic[T]):
     def get_wrapped(self) -> T:
         return self.wrapped
 
-    def done(self):
+    def done(self) -> None:
         """Placeholder for the original wrapped cleanup method."""
         raise NotImplementedError()
 
@@ -38,11 +38,11 @@ class ReporterWrapper(ModelWrapper[Reporter]):
     """
 
     @override
-    def done(self):
+    def done(self) -> None:
         """Calls the original Reporter.end() for cleanup."""
         self.wrapped.end()
 
-    def end(self):
+    def end(self) -> None:
         """
         Patch: Overrides the original end() method and does nothing
         to prevent premature cleanup.
@@ -57,9 +57,9 @@ class FormatterWrapper(ModelWrapper[Formatter]):
     """
 
     @override
-    def done(self):
+    def done(self) -> None:
         """Calls the original Formatter.close() for resource closing."""
         self.wrapped.close()
 
-    def close(self):
+    def close(self) -> None:
         """Overrides the original close() method to prevent premature resource closing."""

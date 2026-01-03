@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+
+# Detect if script is running inside <repo>/src/bin
+this_file="$(readlink -f -- "${BASH_SOURCE[0]}")"
+src_dir="$(dirname "$(dirname -- "${this_file}")")"
+
+if [[ "${src_dir}" == */src ]]; then
+  venv_dir="${src_dir}/../.venv"
+  if [[ ! -d "${venv_dir}" ]]; then
+    echo "Error: Detected source code environment, but .venv directory is missing." >&2
+    echo "Expected .venv at: ${venv_dir}" >&2
+    return 1
+  fi
+
+  bin_path="$(readlink -f -- "${venv_dir}")/bin/register-python-argcomplete3"
+  if [[ ! -x "${bin_path}" ]]; then
+    echo "Error: venv register-python-argcomplete3 is missing or not executable." >&2
+    echo "Expected: ${bin_path}" >&2
+    return 1
+  fi
+else
+  # Prefer the register script next to the resolved systest, if any
+  systest_path="$(command -v systest 2>/dev/null || true)"
+  if [[ -n "${systest_path}" ]]; then
+    systest_real="$(readlink -f -- "${systest_path}")"
+    systest_dir="$(dirname -- "${systest_real}")"
+    candidate="${systest_dir}/register-python-argcomplete3"
+    if [[ -x "${candidate}" ]]; then
+      bin_path="${candidate}"
+    fi
+  fi
+
+  # Fallback to PATH
+  if [[ -z "${bin_path:-}" ]]; then
+    bin_path="$(command -v register-python-argcomplete3 2>/dev/null || true)"
+  fi
+
+  if [[ -z "${bin_path}" || ! -x "${bin_path}" ]]; then
+    echo "Error: register-python-argcomplete3 not found." >&2
+    return 1
+  fi
+fi
+
+eval "$("${bin_path}" systest)"
+return 0

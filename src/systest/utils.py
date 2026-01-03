@@ -1,34 +1,47 @@
 import os
 from enum import Enum
 
-from packaging.version import parse
+from packaging.version import parse, Version
 
 
-def run_version() -> str:
+def run_version() -> Version:
     """Retrieves the system test running version string from the environment.
 
     :raises RuntimeError: If the 'SYSTEST_RUN_VERSION' environment variable is not set,
                           indicating the required application environment setup is missing.
-    :returns: The string value of SYSTEST_RUN_VERSION.
+    Returns:
+        Version: The parsed version object representing the current running version.
     """
     version = os.environ.get("SYSTEST_RUN_VERSION")
 
     if not version:
         raise RuntimeError("The 'SYSTEST_RUN_VERSION' environment variable must be set before calling this function.")
 
-    return version
+    return parse(version)
+
+
+def parse_version(version: str):
+    """Parses a version string into a Version object.
+
+    Args:
+        version (str): The version string to parse.
+
+    Returns:
+        Version: The parsed version object.
+    """
+    return parse(version)
 
 
 class CompareVersion(Enum):
     """Represents the result of comparing two versions."""
 
-    LESS: int = -1
+    LESS = -1
     """Indicates that version 1 is chronologically older than version 2 (v1 < v2)."""
 
-    EQUAL: int = 0
+    EQUAL = 0
     """Indicates that version 1 is chronologically the same as version 2 (v1 == v2)."""
 
-    GREATER: int = 1
+    GREATER = 1
     """Indicates that version 1 is chronologically newer than version 2 (v1 > v2)."""
 
     def __str__(self):

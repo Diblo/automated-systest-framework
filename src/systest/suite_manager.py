@@ -2,75 +2,125 @@ import site
 import subprocess
 import sys
 from pathlib import Path
-from typing import List
-
+from typing import NamedTuple, Optional, Union, cast
+from dotenv import dotenv_values
 import pkg_resources
+from packaging.version import InvalidVersion
 
+from .utils import parse_version
 from .constants import (
     SUITE_CONFIG_FILE,
     SUITE_DEFAULT_CONFIG_CONTENT,
     SUITE_DEFAULT_REQUIREMENTS_CONTENT,
     SUITE_FEATURES_FOLDER,
+    SUITE_LIB_FOLDER,
     SUITE_REQUIREMENTS_FILE,
     SUITE_SUFFIX,
     SUITE_SUPPORT_FOLDER,
+    VERSION,
 )
 from .exceptions import PipError, SuiteManagerError
 
 __all__ = ["install_suite_dependencies", "create_suite"]
 
 
-def _call_pip(args: List[str], verbose: bool = False) -> None:
-    """
-    Executes a pip command via subprocess and handles standard errors.
+class SuiteConfig(NamedTuple):
+    framework_version: str = ""
+    features_folder: str = ""
+    support_folder: str = ""
+
+
+def parse_suite_conf(file_path: Path) -> SuiteConfig:
+    """Parses a .systestrc file.
 
     Args:
-        args (List[str]): List of arguments to pass to pip.
-        verbose (bool): If True, prints the stdout of the pip command.
-
-    Raises:
-        PipError: If pip command fails or pip executable is not found.
-    """
-    try:
-        # sys.executable ensures the correct environment is used
-        pip_cmd = [sys.executable, "-m", "pip"]
-
-        # Run the command. 'check=True' ensures a CalledProcessError is raised
-        # if pip returns a non-zero exit code (i.e., installation failed).
-        result = subprocess.run(args=pip_cmd + args, check=True, capture_output=True, text=True)
-        if verbose:
-            print(result.stdout.strip())
-
-    except FileNotFoundError as e:
-        # pip3 executable not found in PATH
-        raise PipError(
-            "Error: 'pip3' command not found. Ensure Python 3 and pip 3 are installed "
-            "and accessible in your environment PATH."
-        ) from e
-    except subprocess.CalledProcessError as e:
-        # This occurs if pip failed to resolve or install dependencies.
-        print("\n--- ERROR ---")
-        print(f"Command: {' '.join(e.cmd)}")
-        print(f"Return Code: {e.returncode}")
-        print("STDOUT:")
-        print(e.stdout)
-        print("STDERR:")
-        print(e.stderr)
-
-        raise PipError("Pip 3 failed performing the request. Check logs above.") from e
-
-
-def _is_empty_or_only_comments(file_path: Path) -> bool:
-    """
-    Checks if a file is empty or if all non-empty lines start with '#'.
-
-    Args:
-        file_path (Path): The path to the file to check.
+        file_path: The Path object pointing to the configuration file (.systestrc).
 
     Returns:
-        bool: True if the file is empty or contains only comments, False otherwise.
+        A SuiteConfig instance populated with settings from the file or defaults.
     """
-    with open(file_path, "r") as f:
+    if file_path.is_file():
+        loaded_config = cast(dict[str, str], dotenv_values(file_path)) or {}
+    else:
+        loaded_config = {}
+
+    sanitized_config: dict[str, str] = {
+        "framework_version": VERSION,
+        "features_folder": SUITE_FEATURES_FOLDER,
+        "support_folder": SUITE_SUPPORT_FOLDER,
+    }
+    sanitized_config.update(loaded_config)
+
+    version = sanitized_config["framework_version"]
+    try:
+        parse_version(version)
+    except InvalidVersion as e:
+        raise SuiteManagerError(
+            f"The specified framework_version in {str(file_path)!r} is invalid: {version!r}"
+        ) from e
+
+    return SuiteConfig(**sanitized_config)
+
+
+class SuiteData(NamedTuple):
+    name: str = ""
+    suite: str = ""
+    path: Path = Path()
+    features_path: Path = Path()
+    support_path: Path = Path()
+    requirements_file: Path = Path()
+    lib_path: Path = Path()
+    run_version: str = ""
+
+    def suite_exists(self) -> bool:
+        return self.path.is_dir()
+
+    def suite_is_valide(self) -> bool:
+        return self.features_path.is_dir() and self.support_path.is_dir()
+
+
+def create_suite_data(suite_name: str, suites_directory: Union[str, Path]) -> SuiteData:
+    """
+    Creates and returns a SuiteData object populated with paths and data
+    related to the specified test suite.
+
+    Args:
+        suite_name (str): The name of the test suite.
+        suites_directory (Union[str, Path]): The root directory where test suites are located.
+
+    Returns:
+        SuiteData: An object containing paths and data for the test suite.
+    """
+    if suite_name.endswith(SUITE_SUFFIX):
+        suite_name = suite_name.removesuffix(SUITE_SUFFIX)
+
+    if isinstance(suites_directory, str):
+        suites_directory = Path(suites_directory)
+
+    suite_path = suites_directory / f"{suite_name}{SUITE_SUFFIX}"
+
+    if suite_path.name != f"{suite_name}{SUITE_SUFFIX}":
+        raise SuiteManagerError(f"The specified Test Suite name is invalid: {suite_name!r}")
+
+    suite_config = parse_suite_conf(suite_path / SUITE_CONFIG_FILE)
+
+    return SuiteData(
+        name=suite_name,
+        suite=suite_path.name,
+        path=suite_path,
+        features_path=suite_path / suite_config.features_folder,
+        support_path=suite_path / suite_config.support_folder,
+        requirements_file=suite_path / SUITE_REQUIREMENTS_FILE,
+        lib_path=suite_path / SUITE_LIB_FOLDER,
+        run_version=suite_config.framework_version,
+    )
+
+
+def has_requirements(requirements_file: Path) -> bool:
+    if not requirements_file.is_file():
+        return False
+
+    with open(requirements_file, "r") as f:
         for line in f:
             stripped_line = line.strip()
             if stripped_line and not stripped_line.startswith("#"):
@@ -78,21 +128,23 @@ def _is_empty_or_only_comments(file_path: Path) -> bool:
         return True
 
 
-def _is_requirements_satisfied(requirements_file: Path, lib_path: str) -> bool:
+def is_requirements_satisfied(requirements_file: Path, lib_path: Path) -> bool:
     """
     Checks if all requirements in the file are satisfied by the packages
     in the lib_path or system path without installing them.
 
     Args:
         requirements_file (Path): Path to requirements.txt.
-        lib_path (str): Path to local library folder.
+        lib_path (Path): Path to local library folder.
 
     Returns:
         bool: True if all requirements are satisfied, False otherwise.
     """
+    lib_path_str = str(lib_path)
+
     # Create a WorkingSet that includes the target .lib directory
     # This allows us to "simulate" the environment to see if packages exist there
-    ws = pkg_resources.WorkingSet([lib_path] + sys.path)
+    ws = pkg_resources.WorkingSet([lib_path_str] + sys.path)
 
     with open(requirements_file, "r") as f:
         for line in f:
@@ -107,58 +159,64 @@ def _is_requirements_satisfied(requirements_file: Path, lib_path: str) -> bool:
     return True
 
 
-def install_suite_dependencies(lib_path: Path, requirements_file: Path = None, verbose: bool = False) -> None:
+def install_suite_dependencies(requirements_file: Path, lib_path: Path, verbose: Optional[bool] = False) -> None:
     """
     Installs the Python dependencies declared in the target test suite's requirements file
     into a local directory within the suite folder. It then adds this directory to sys.path
     to make dependencies immediately available to the current process.
 
     Args:
+        requirements_file (Path): The path to the requirements.txt file.
         lib_path (Path): The directory path where dependencies should be installed (e.g., suite/.lib).
-        requirements_file (Path, optional): The path to the requirements.txt file.
         verbose (bool): If True, provides detailed output during installation checks.
 
     Raises:
         PipError: If the 'pip' command fails.
     """
-    # Define local lib path inside the suite
-    lib_path_str = str(lib_path.resolve())
+    lib_path_str = str(lib_path)
 
-    # Validation Checks
-    requirements_file_exists = requirements_file is not None and requirements_file.is_file()
+    print("Installing dependencies...")
 
-    if not requirements_file_exists or _is_empty_or_only_comments(requirements_file):
+    try:
+        # sys.executable ensures the correct environment is used
+        args = [
+            sys.executable,
+            "-m",
+            "pip",
+            "install",
+            "--upgrade",
+            "--upgrade-strategy",
+            "only-if-needed",
+            "-r",
+            str(requirements_file),
+            "--target",
+            lib_path_str
+        ]
+
+        # Run the command. 'check=True' ensures a CalledProcessError is raised
+        # if pip returns a non-zero exit code (i.e., installation failed).
+        result = subprocess.run(args=args, check=True, capture_output=True, text=True)
         if verbose:
-            if requirements_file_exists:
-                print(f"Skipping: The Test Suite's {requirements_file.name!r} file is empty or comments only.")
-            elif requirements_file is not None:
-                print(f"Skipping: {requirements_file.name!r} not found in the Test Suite.")
-            else:
-                print("Skipping: requirements file not found in the Test Suite.")
-        return
+            print(result.stdout.strip())
+    except FileNotFoundError as e:
+        # pip3 executable not found in PATH
+        raise PipError(
+            "'pip3' command not found. Ensure Python 3 and pip 3 are installed "
+            "and accessible in your environment PATH."
+        ) from e
+    except subprocess.CalledProcessError as e:
+        # This occurs if pip failed to resolve or install dependencies.
+        print("\n--- ERROR ---")
+        print(f"Command: {' '.join(e.cmd)}")
+        print(f"Return Code: {e.returncode}")
+        print("STDOUT:")
+        print(e.stdout)
+        print("STDERR:")
+        print(e.stderr)
 
-    print("Checking Test Suite dependencies...")
+        raise PipError("Pip 3 failed performing the request. Check logs above.") from e
 
-    if _is_requirements_satisfied(requirements_file, lib_path_str):
-        print("Dependencies already satisfied.")
-    else:
-        print("Installing dependencies...")
-
-        _call_pip(
-            [
-                "install",
-                "--upgrade",
-                "--upgrade-strategy",
-                "only-if-needed",
-                "-r",
-                str(requirements_file),
-                "--target",
-                lib_path_str,
-            ],
-            verbose,
-        )
-
-        print(f"Dependencies successfully installed to {lib_path_str!r}.")
+    print(f"Dependencies successfully installed to {lib_path_str!r}.")
 
     # Inject into path for CURRENT process so imports work immediately
     # We do this AFTER install to ensure we load the newly installed versions if any

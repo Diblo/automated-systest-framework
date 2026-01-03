@@ -1,15 +1,15 @@
 import glob
 import os
 from pathlib import Path
-from typing import Dict, Iterator, List, Optional, Set, Tuple
+from typing import Any, Dict, Iterator, List, Optional, Set, Tuple, cast
 
 from behave.exception import ConfigError
 from behave.formatter._registry import make_formatters as behave_make_formatters
-from behave.formatter.base import StreamOpener
+from behave.formatter.base import Formatter
 from behave.model_type import FileLocation as BehaveFileLocation
 from behave.pathutil import select_subdirectories
-from behave.runner import Context, ModelRunner, parse_features
-from behave.runner_util import exec_file, load_step_modules, reset_runtime
+from behave.runner import Context, ModelRunner
+from behave.runner_util import exec_file, load_step_modules, reset_runtime, parse_features
 
 from .configuration import Configuration
 from .wrapper import FormatterWrapper, ReporterWrapper
@@ -17,7 +17,7 @@ from .wrapper import FormatterWrapper, ReporterWrapper
 __all__ = ["SystestRunner"]
 
 
-def iter_make_paths(path: str, base_path: Path) -> Iterator[Tuple[str, Tuple[Path, Optional[str]]]]:
+def iter_make_paths(path: str, base_path: Path) -> Iterator[Tuple[str, Tuple[Path, Optional[int]]]]:
     """
     Resolves a single path string (which may contain wildcards or line numbers)
     into an iterator of resolved, absolute file paths.
@@ -59,7 +59,7 @@ def iter_make_paths(path: str, base_path: Path) -> Iterator[Tuple[str, Tuple[Pat
         yield (path, (resolved_path.absolute(), line_number))
 
 
-def iter_paths(paths: List[str], base_path: Path) -> Iterator[Tuple[str, Tuple[Path, Optional[str]]]]:
+def iter_paths(paths: List[str], base_path: Path) -> Iterator[Tuple[str, Tuple[Path, Optional[int]]]]:
     """
     Iterates over a list of paths, supporting direct paths, globs, and AT_files (@filename).
 
@@ -95,6 +95,8 @@ class FileLocation(BehaveFileLocation):
     A minimal extension of the Behave FileLocation class to make it hashable, allowing
     its use in a set for feature collection.
     """
+    filename: str
+    line: Optional[int]
 
     def __hash__(self):
         return hash((self.filename, self.line))
@@ -124,15 +126,18 @@ def resolve_feature(path: Path, line_number: Optional[int]) -> List[FileLocation
     return []
 
 
-def make_formatters(config: Configuration, stream_openers: StreamOpener):
+def make_formatters(config: Configuration) -> List[FormatterWrapper]:
     """Build a list of formatter, used by a behave runner.
 
-    :param config:  Configuration object to use.
-    :param stream_openers: List of stream openers to use (for formatters).
-    :return: List of formatters.
+    Args:
+        config (Configuration): Configuration object to use.
+
+    Returns:
+        List[FormatterWrapper]: List of formatters.
     """
     # Wrap formatters to prevent premature 'close' calls
-    return [FormatterWrapper(formatter) for formatter in behave_make_formatters(config, stream_openers)]
+    formatters = cast(List[Formatter], behave_make_formatters(config, config.outputs))
+    return [FormatterWrapper(formatter) for formatter in formatters]
 
 
 class SystestRunner(ModelRunner):
@@ -160,8 +165,8 @@ class SystestRunner(ModelRunner):
         Args:
             feature_area_path: The absolute path to the current feature area folder.
         """
-        self.hooks = {}
-        hooks_path: Path = feature_area_path / self.config.environment_file
+        self.hooks: Dict[str, Any] = {}
+        hooks_path = feature_area_path / self.config.environment_file
         if hooks_path.is_file():
             exec_file(hooks_path, self.hooks)
 
@@ -175,10 +180,10 @@ class SystestRunner(ModelRunner):
         """
         steps_dir: Path = feature_area_path / self.config.steps_dir
 
-        step_paths = [steps_dir]
+        step_paths: list[Path] = [steps_dir]
         if self.config.use_nested_step_modules:
             print("USE_NESTED_STEP_MODULES: yes")
-            step_paths.extend(select_subdirectories(steps_dir))
+            step_paths.extend(cast(List[Path], select_subdirectories(steps_dir)))
 
         reset_runtime()
         load_step_modules(step_paths)
@@ -192,9 +197,9 @@ class SystestRunner(ModelRunner):
             Dict[str, List[FileLocation]]: A dictionary mapping feature area folder names (str)
                                   to a list of absolute feature file paths (list[str]).
         """
-        grouped_feature_files: Dict[str, Set[str]] = {}
+        grouped_feature_files: Dict[str, Set[FileLocation]] = {}
         paths = self.config.paths[:]
-        features_path = self.config.suite_features_path.absolute()
+        features_path = self.config.suite_data.features_path.absolute()
 
         if not paths:
             if self.config.verbose:
@@ -272,7 +277,9 @@ class SystestRunner(ModelRunner):
 
         self.context = Context(self)
         self.config.setup_logging()
-        self.formatters = make_formatters(self.config, self.config.outputs)
+
+        formatters = cast(List[Formatter], behave_make_formatters(self.config, self.config.outputs))
+        self.formatters = [FormatterWrapper(formatter) for formatter in formatters]
 
     def finish(self) -> None:
         """
@@ -280,8 +287,7 @@ class SystestRunner(ModelRunner):
         """
         # Ensuring formatters and reporters are properly closed
         for formatter in self.formatters:
-            if isinstance(formatter, FormatterWrapper):
-                formatter.done()
+            formatter.done()
 
         for reporter in self.config.reporters:
             if isinstance(reporter, ReporterWrapper):
@@ -290,7 +296,7 @@ class SystestRunner(ModelRunner):
         # Restore the original input paths
         self.config.paths = self.original_paths
 
-    def run(self):
+    def run(self) -> int:
         """Runs features, iterating over groups defined by feature area folders.
 
         For each feature area, the runner state (base directory, steps, hooks) is
@@ -309,7 +315,7 @@ class SystestRunner(ModelRunner):
         # Iterate over paths grouped by feature area.
         failed = 0
         for feature_area_name in self.feature_locations:
-            if self.run_feature_area(feature_area_name) > 0:
+            if not self.run_feature_area(feature_area_name):
                 failed = 1
                 if self.config.stop:
                     break
@@ -321,7 +327,7 @@ class SystestRunner(ModelRunner):
 
         return failed
 
-    def run_feature_area(self, name: str):
+    def run_feature_area(self, name: str) -> bool:
         """
         Executes all features belonging to a single feature area folder.
         This method is responsible for setting the context for the executed feature area.
@@ -330,9 +336,9 @@ class SystestRunner(ModelRunner):
             name: The name of the feature area folder (e.g., 'foo_bar_initialization').
 
         Returns:
-            int: The status (0=success or 1=failure).
+            bool: The status (True=success or False=failure).
         """
-        feature_area_path = (self.config.suite_features_path / name).absolute()
+        feature_area_path = (self.config.suite_data.features_path / name).absolute()
 
         # -- STEP: Sets the context for path resolution
         self.config.base_dir = str(feature_area_path)
@@ -346,4 +352,4 @@ class SystestRunner(ModelRunner):
         features = parse_features(self.feature_locations[name], language=self.config.lang)
 
         # -- STEP: Run all features
-        return self.run_model(features)
+        return self.run_model(features) is False

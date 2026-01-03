@@ -63,7 +63,7 @@ class ModuleHelper:
         """Mocks a module-level constant (e.g., set, list, variable) by replacing its value.
 
         Args:
-            name (str): The name of the constant to mock (e.g., 'ENV_EXCLUDED_OPTIONS').
+            name (str): The name of the constant to mock (e.g., 'EXCLUDED_OPTION_DEFAULTS').
             value (Any): The new value for the constant.
         """
         target = f"{self.module.__name__}.{name}"
@@ -120,7 +120,7 @@ class TestLoadEnvironmentSettings:
             },
         )
 
-        configuration_module_helper.module.load_environment_settings(defaults)
+        defaults = configuration_module_helper.module.load_configuration()
 
         assert defaults == {
             "other_key": "initial_value",
@@ -147,7 +147,7 @@ class TestLoadEnvironmentSettings:
             },
         )
 
-        configuration_module_helper.module.load_environment_settings(defaults)
+        defaults = configuration_module_helper.module.load_configuration()
 
         assert "other_var" not in defaults, "Defaults dictionary was polluted by a non-SYSTEST_ environment variable."
         assert defaults == {
@@ -168,7 +168,7 @@ class TestLoadEnvironmentSettings:
             },
         )
 
-        configuration_module_helper.module.load_environment_settings(defaults)
+        defaults = configuration_module_helper.module.load_configuration()
 
         # Only VAR_1 and VAR_4 should be loaded (with stripped whitespace)
         assert defaults == {
@@ -177,7 +177,7 @@ class TestLoadEnvironmentSettings:
         }, "Empty or whitespace-only environment variables were incorrectly loaded or stripped."
 
     def test_raise_error_on_excluded_options(self, configuration_module_helper: ConfigurationModuleHelper):
-        """Test that using an option listed in ENV_EXCLUDED_OPTIONS raises ConfigError."""
+        """Test that using an option listed in EXCLUDED_OPTION_DEFAULTS raises ConfigError."""
         defaults = {}
         configuration_module_helper.mock_func(
             "build_environment_values",
@@ -186,11 +186,11 @@ class TestLoadEnvironmentSettings:
             },
         )
         # Mock the exclusion set to include the tested variable name
-        configuration_module_helper.mock_constant("ENV_EXCLUDED_OPTIONS", {"excluded"})
+        configuration_module_helper.mock_constant("EXCLUDED_OPTION_DEFAULTS", {"excluded"})
 
         match = re.escape("ENV[SYSTEST_EXCLUDED]: Setting 'excluded' cannot be specified as environment var.")
         with pytest.raises(ConfigError, match=match):
-            configuration_module_helper.module.load_environment_settings(defaults)
+            defaults = configuration_module_helper.module.load_configuration()
 
     def test_handle_empty_config_name(self, configuration_module_helper: ConfigurationModuleHelper):
         """Test handling of environment variable with only the prefix (SYSTEST_)."""
@@ -202,7 +202,7 @@ class TestLoadEnvironmentSettings:
             },
         )
 
-        configuration_module_helper.module.load_environment_settings(defaults)
+        defaults = configuration_module_helper.module.load_configuration()
 
         # The variable name (after stripping 'SYSTEST_') is empty, so it should be skipped
         assert defaults == {}, "Malformed SYSTEST_ environment variable polluted the defaults dictionary."
@@ -222,7 +222,7 @@ class TestLoadEnvironmentSettings:
             },
         )
 
-        configuration_module_helper.module.load_environment_settings(defaults, verbose=True)
+        defaults = configuration_module_helper.module.load_configuration(verbose=True)
 
         # CORRECTED: Get the output lines using the helper method
         output_lines = configuration_module_helper.get_output_lines()

@@ -1,7 +1,8 @@
 import typing
 from typing import Any, Dict, List, Tuple, Union
 
-Options = List[Tuple[Union[Tuple[str], Tuple[str, str]], Dict[str, Any]]]
+Option = Tuple[Union[Tuple[str], Tuple[str, str]], Dict[str, Any]]
+Options = List[Option]
 DefaultValues = Dict[str, Any]
 CommandArgs = List[str]
 
@@ -37,7 +38,7 @@ else:  # <=3.11
 
         """
         try:
-            arg.__override__ = True
+            arg.__override__ = True # pyright: ignore[reportFunctionMemberAccess]
         except (AttributeError, TypeError):
             # Skip the attribute silently if it is not writable.
             # AttributeError happens if the object has __slots__ or a

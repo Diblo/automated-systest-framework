@@ -3,6 +3,8 @@ from typing import Dict, List, Set
 from behave.model import Feature, Tag
 from behave.reporter.base import Reporter
 
+from ..configuration import Configuration
+
 # Prefix used to identify test ID tags in features
 TEST_IDENTIFICATION_PREFIX = "SIR-T"
 
@@ -22,7 +24,7 @@ class ZephyrReporter(Reporter):
     to test management systems Zephyr (Jira).
     """
 
-    def __init__(self, config):
+    def __init__(self, config: Configuration):
         super(ZephyrReporter, self).__init__(config)
         self.features: List[Feature] = []
         # Store final results here (True = PASSED, False = FAILED)

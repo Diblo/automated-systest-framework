@@ -14,7 +14,7 @@ from behave.exception import ConfigError
 from pytest_mock.plugin import MockerFixture
 
 from src.systest.constants import (
-    ENV_EXCLUDED_OPTIONS,
+    EXCLUDED_OPTION_DEFAULTS,
     OPTIONS,
     SUITE_CONFIG_FILE,
     SUITE_FEATURES_FOLDER,
@@ -577,21 +577,21 @@ def test_configuration_basic(test_suite_handler: SuiteHandler, configuration_cla
         config.suites_directory == mock_test_suite.suites_directory
     ), f"Expected suites_directory {mock_test_suite.suites_directory!r}, got {config.suites_directory!r}"
 
-    assert config.suite == mock_test_suite.suite, f"Expected suite name {mock_test_suite.suite!r}, got {config.suite!r}"
+    assert config.suite_data.name == mock_test_suite.suite, f"Expected suite name {mock_test_suite.suite!r}, got {config.suite_data.name!r}"
     assert (
-        config.suite_path == mock_test_suite.suite_path
-    ), f"Expected suite_path {mock_test_suite.suite_path!r}, got {config.suite_path!r}"
+        config.suite_data.path == mock_test_suite.suite_path
+    ), f"Expected suite_path {mock_test_suite.suite_path!r}, got {config.suite_data.path!r}"
 
     # Check that default feature/support folder names were used
     assert (
-        config.suite_features_path == mock_test_suite.suite_features_path
-    ), f"Expected suite_features_path {mock_test_suite.suite_features_path!r}, got {config.suite_features_path!r}"
+        config.suite_data.features_path == mock_test_suite.suite_features_path
+    ), f"Expected suite_features_path {mock_test_suite.suite_features_path!r}, got {config.suite_data.features_path!r}"
     assert (
-        config.suite_support_path == mock_test_suite.suite_support_path
-    ), f"Expected suite_support_path {mock_test_suite.suite_support_path!r}, got {config.suite_support_path!r}"
+        config.suite_data.support_path == mock_test_suite.suite_support_path
+    ), f"Expected suite_support_path {mock_test_suite.suite_support_path!r}, got {config.suite_data.support_path!r}"
 
     # framework_version should fall back to the application default VERSION as config file was removed.
-    assert config.run_version == VERSION, f"Expected default framework_version {VERSION!r}, got {config.run_version!r}"
+    assert config.suite_data.run_version == VERSION, f"Expected default framework_version {VERSION!r}, got {config.suite_data.run_version!r}"
 
 
 @pytest.mark.dependency(depends=["test_configuration_basic"])
@@ -644,16 +644,16 @@ class TestConfigurationSources:
 
         # 3. Assertions: Check that path resolution used values from the config file
         assert (
-            config.suite_features_path == mock_test_suite.suite_features_path
-        ), f"Expected suite_features_path {mock_test_suite.suite_features_path!r}, got {config.suite_features_path!r}"
+            config.suite_data.features_path == mock_test_suite.suite_features_path
+        ), f"Expected suite_features_path {mock_test_suite.suite_features_path!r}, got {config.suite_data.features_path!r}"
         assert (
-            config.suite_support_path == mock_test_suite.suite_support_path
-        ), f"Expected suite_support_path {mock_test_suite.suite_support_path!r}, got {config.suite_support_path!r}"
+            config.suite_data.support_path == mock_test_suite.suite_support_path
+        ), f"Expected suite_support_path {mock_test_suite.suite_support_path!r}, got {config.suite_data.support_path!r}"
 
         # Check that the framework version was loaded from the config file
         assert (
-            config.run_version == TEST_VERSION
-        ), f"Expected framework_version {TEST_VERSION!r} from config file, got {config.run_version!r}"
+            config.suite_data.run_version == TEST_VERSION
+        ), f"Expected framework_version {TEST_VERSION!r} from config file, got {config.suite_data.run_version!r}"
 
     @pytest.mark.dependency(depends=["TestConfigurationSources::test_attributes_loaded_from_cli"])
     def test_attributes_loaded_from_env(
@@ -674,7 +674,7 @@ class TestConfigurationSources:
 
         # Iterate over the map and test each non-excluded environment variable
         for option in TEST_OPTIONS_MAP:
-            if option.attr.name not in ENV_EXCLUDED_OPTIONS:
+            if option.attr.name not in EXCLUDED_OPTION_DEFAULTS:
                 envs = {option.env: option.env_input}
                 # Initialize Configuration
                 config = configuration_class_helper.create_configuration(mock_test_suite, envs=envs)
@@ -717,7 +717,7 @@ class TestConfigurationOthers:
 
         # Iterate over the map and test each non-excluded option
         for option in TEST_OPTIONS_MAP:
-            if option.attr.name in ENV_EXCLUDED_OPTIONS:
+            if option.attr.name in EXCLUDED_OPTION_DEFAULTS:
                 continue
 
             arg_name = option.arg
@@ -799,15 +799,15 @@ class TestConfigurationOthers:
         # --- Assertions ---
         # The value must come from the config file (TEST_VERSION), ignoring ENV/CLI attempts to override.
         assert (
-            config.run_version == TEST_VERSION
-        ), f"Suite config version was incorrectly overridden. Expected {TEST_VERSION!r}, got {config.run_version!r}"
+            config.suite_data.run_version == TEST_VERSION
+        ), f"Suite config version was incorrectly overridden. Expected {TEST_VERSION!r}, got {config.suite_data.run_version!r}"
 
         # Asserting that the correct paths were loaded (based on config file), ignoring ENV
         assert (
-            mock_test_suite.suite_features_path == config.suite_features_path
+            mock_test_suite.suite_features_path == config.suite_data.features_path
         ), "Features path mismatch: Expected path from suite config, but was overridden."
         assert (
-            mock_test_suite.suite_support_path == config.suite_support_path
+            mock_test_suite.suite_support_path == config.suite_data.support_path
         ), "Support path mismatch: Expected path from suite config, but was overridden."
 
     def test_utility_mode(self, configuration_class_helper: ConfigurationClassHelper, capsys: pytest.CaptureFixture):
@@ -877,7 +877,7 @@ class TestConfigurationErrors:
             arg_env_setter (ArgEnvSetter): Fixture to set environment variables.
         """
         mock_test_suite = test_suite_handler.init()
-        excluded_options = [option for option in TEST_OPTIONS_MAP if option.attr.name in ENV_EXCLUDED_OPTIONS]
+        excluded_options = [option for option in TEST_OPTIONS_MAP if option.attr.name in EXCLUDED_OPTION_DEFAULTS]
 
         # Iterate over the excluded options and try to set them via ENV
         for option in excluded_options:

@@ -1,64 +1,43 @@
 #!/usr/bin/env sh
 set -e
 
-# --- Determine Environment and Path ---
-SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+die() {
+  echo "Error: $*" >&2
+  exit 1
+}
 
-# Detect if script is running inside <repo>/src/bin
-src_dir="$(dirname "${SCRIPT_DIR}")"
+script_dir="$(dirname "$(readlink -f "$0")")"
+src_dir="$(dirname "${script_dir}")"
 
-case "${src_dir}" in
-  */src)
-    IS_SOURCE_USED="true"
+if [ "${src_dir%/src}" != "${src_dir}" ]; then
+  # Running from <repo>/src/bin
+  is_source_used="true"
 
-    VENV_DIR="${src_dir}/../.venv"
-    if [ ! -d "${VENV_DIR}" ]; then
-      echo "Error: Detected source code environment, but .venv directory is missing." >&2
-      echo "Expected .venv at: ${VENV_DIR}" >&2
-      exit 1
-    fi
+  venv_dir="${src_dir}/../.venv"
+  [ -d "${venv_dir}" ] || die "Detected source code environment, but .venv directory is missing. Expected: ${venv_dir}"
 
-    VENV_ABS="$(readlink -f "${VENV_DIR}")"
-    BIN_PATH="${VENV_ABS}/bin/python3"
-    if [ ! -x "${BIN_PATH}" ]; then
-      echo "Error: .venv exists, but python3 executable is missing or not executable." >&2
-      echo "Expected executable at: ${BIN_PATH}" >&2
-      exit 1
-    fi
+  venv_abs="$(readlink -f "${venv_dir}")"
+  bin_path="${venv_abs}/bin/python3"
+  [ -x "${bin_path}" ] || die ".venv exists, but python3 is missing or not executable. Expected: ${bin_path}"
 
-    # Add src_dir to PYTHONPATH
-    # shellcheck disable=SC2195
-    case ":${PYTHONPATH}:" in
-      *":${src_dir}:"*) ;;
-      :) PYTHONPATH="${src_dir}" ;;
-      *) PYTHONPATH="${src_dir}:${PYTHONPATH}" ;;
-    esac
-    ;;
-  *)
-    IS_SOURCE_USED="false"
+  case ":${PYTHONPATH}:" in
+    *":${src_dir}:"*) ;;
+    :) PYTHONPATH="${src_dir}" ;;
+    *) PYTHONPATH="${src_dir}:${PYTHONPATH}" ;;
+  esac
+else
+  # Packaged/system install
+  is_source_used="false"
 
-    # Running from packaged install
-    if [ -x "${SCRIPT_DIR}/python3" ]; then
-      BIN_PATH="${SCRIPT_DIR}/python3"
-    else
-      # Fallback to the global python3
-      SYS_PYTHON="$(command -v python3 || true)"
+  if [ -x "${script_dir}/python3" ]; then
+    bin_path="${script_dir}/python3"
+  else
+    sys_python="$(command -v python3 || true)"
+    [ -n "${sys_python}" ] || die "Unable to find 'python3' in PATH."
 
-      if [ -z "${SYS_PYTHON}" ]; then
-        echo "Error: Unable to find 'python3' in PATH." >&2
-        exit 1
-      fi
+    bin_path="$(readlink -f "${sys_python}")"
+    [ -x "${bin_path}" ] || die "Python executable is not executable at: ${bin_path}"
+  fi
+fi
 
-      BIN_PATH="$(readlink -f "${SYS_PYTHON}")"
-
-      if [ ! -x "${BIN_PATH}" ]; then
-        echo "Error: Python executable is not executable at: ${BIN_PATH}" >&2
-        exit 1
-      fi
-    fi
-    ;;
-esac
-
-# --- Execute Application ---
-# Note: The 'exec' command is used here to replace the current shell process, respecting the exit code.
-exec env _SYSTEST_SOURCE="${IS_SOURCE_USED}" PYTHONPATH="${PYTHONPATH}" "${BIN_PATH}" -m systest "$@"
+exec env _SYSTEST_SOURCE="${is_source_used}" PYTHONPATH="${PYTHONPATH}" "${bin_path}" -m systest "$@"

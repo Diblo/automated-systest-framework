@@ -1,12 +1,13 @@
 from pathlib import Path
-from typing import Set
+from typing import List, Set, Tuple
 
 from .types import Options
 
 try:
-    VERSION: str = (Path(__file__).parent / "VERSION").read_text().strip()
+    _version: str = (Path(__file__).parent / "VERSION").read_text().strip()
 except FileNotFoundError:
-    VERSION: str = "0.0.0-dev"
+    _version: str = "0.0.0-dev"
+VERSION = _version
 
 OPTIONS: Options = [
     (
@@ -35,9 +36,7 @@ OPTIONS: Options = [
     (("--config",), dict(dest="config", action="store", type=str, help="Specify the path to a configuration file.")),
 ]
 
-ENV_SEQUENCE_OPTIONS: Set = {"name", "tags", "format", "outfiles", "userdata_defines", "paths"}
-
-ENV_EXCLUDED_OPTIONS: Set = {
+EXCLUDED_OPTION_DEFAULTS: Set[str] = {
     "suite",
     "create_suite_name",
     "config",
@@ -49,11 +48,13 @@ ENV_EXCLUDED_OPTIONS: Set = {
     "version",
 }
 
+SEQUENCE_OPTIONS: Set[str] = {"name", "tags", "format", "outfiles", "userdata_defines", "paths"}
+
 USER_CONFIG: str = ".systest"
 
-DEFAULT_SUITES_PATH = Path.cwd()
+DEFAULT_SUITES_PATH: Path = Path.cwd()
 
-SUITE_SUFFIX = "_suite"
+SUITE_SUFFIX: str = "_suite"
 
 SUITE_FEATURES_FOLDER: str = "features"
 
@@ -67,7 +68,7 @@ SUITE_LIB_FOLDER: str = ".lib"
 
 SUITE_ENV_FILE: str = ".env"
 
-SUITE_DEFAULT_CONFIG_CONTENT = """# Specifies the framework version the test suite is guaranteed to support.
+SUITE_DEFAULT_CONFIG_CONTENT: str = """# Specifies the framework version the test suite is guaranteed to support.
 # The framework uses this to ensure compatibility before execution.
 # framework_version=0.0.1
 
@@ -80,7 +81,7 @@ SUITE_DEFAULT_CONFIG_CONTENT = """# Specifies the framework version the test sui
 # support_folder=support
 """
 
-SUITE_DEFAULT_REQUIREMENTS_CONTENT = """# Specific Python dependencies required for running this test suite.
+SUITE_DEFAULT_REQUIREMENTS_CONTENT: str = """# Specific Python dependencies required for running this test suite.
 #
 # Examples:
 #
@@ -96,8 +97,8 @@ SUITE_DEFAULT_REQUIREMENTS_CONTENT = """# Specific Python dependencies required 
 # requests<3.0,>=2.0.1 # >= 2.0.1, but < 3.0.0
 """
 
-SYSTEST_FORMATS = [
+SYSTEST_FORMATS: List[Tuple[str, str]] = [
     # e.g ("test",   "systest.systest_behave.formatter.test:Test")
 ]
 
-DEFAULT_RUNNER = "systest.systest_behave.runner:SystestRunner"
+DEFAULT_RUNNER: str = "systest.systest_behave.runner:SystestRunner"
