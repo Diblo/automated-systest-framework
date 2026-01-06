@@ -105,7 +105,7 @@ def main() -> int:
         print(f"TagExpressionError: {e}")
     except (NotSupportedWarning, PipError, SuiteManagerError) as e:
         print(e)
-    except Exception:
+    except Exception:  # pylint: disable=broad-exception-caught
         # Catch and report any unhandled exceptions during execution
         traceback.print_exc()
 

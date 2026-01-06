@@ -249,6 +249,7 @@ TEST_OPTIONS_MAP: OptionsMap = (
 # --- Helper Classes and Functions ---
 
 
+# pylint: disable=too-many-instance-attributes
 class SuiteHandler:
     """Helper class to set up, tear down, and manage the directory structure
     for a mock test suite within a temporary testing environment.
@@ -376,7 +377,7 @@ framework_version={TEST_VERSION}
 features_folder={self.features_folder}
 support_folder={self.support_folder}
 """
-        self.suite_config_file.write_text(config_file_content.strip())
+        self.suite_config_file.write_text(config_file_content.strip(), encoding="utf-8")
 
     def delete(self) -> None:
         """Removes the entire test suites directory."""
@@ -436,29 +437,26 @@ class ConfigurationClassHelper:
 
     def create_configuration(
         self,
-        mock_test_suite: Optional[SuiteHandler] = None,
+        suite_handler: Optional[SuiteHandler] = None,
         args: Optional[List[str]] = None,
         envs: Optional[Dict[str, str]] = None,
-        exclude_default_args: bool = False,
     ) -> Configuration:
         """
         Configures the environment/arguments and instantiates the Configuration class.
-
-        The `--suite` and `--suites-dir` arguments are automatically included unless
-        `exclude_default_args` is True.
 
         Args:
             mock_test_suite (MockTestSuite): The mock test suite instance to use for paths/names.
             args (Optional[List[str]]): Additional command-line arguments to include.
             envs (Optional[Dict[str, str]]): Environment variables to set.
-            exclude_default_args (bool): If True, skips adding the default suite/directory arguments.
 
         Returns:
             Configuration: A new instance of the Configuration class.
         """
         _args = []
-        if mock_test_suite is not None and exclude_default_args is not True:
-            _args.extend(["--suite", mock_test_suite.suite, "--suites-dir", str(mock_test_suite.suites_directory)])
+        if suite_handler is not None:
+            _args.extend(
+                ["--suite", suite_handler.suite_data.name, "--suites-dir", str(suite_handler.suites_directory)]
+            )
         if args is not None:
             _args.extend(args)
 
@@ -553,7 +551,9 @@ def test_configuration_coverage():
 
 
 @pytest.mark.dependency(depends=["test_configuration_coverage"])
-def test_configuration_basic(test_suite_handler: SuiteHandler, configuration_class_helper: ConfigurationClassHelper):
+def test_configuration_basic(  # pylint: disable=redefined-outer-name
+    test_suite_handler: SuiteHandler, configuration_class_helper: ConfigurationClassHelper
+):
     """Tests basic Configuration initialization and successful loading of suite paths.
 
     This test confirms the fundamental parsing and path resolution logic is sound.
@@ -596,7 +596,9 @@ def test_configuration_basic(test_suite_handler: SuiteHandler, configuration_cla
 
 @pytest.mark.dependency(depends=["test_configuration_basic"])
 class TestConfigurationSources:
-    def test_attributes_loaded_from_cli(
+    """Integration tests for configuration inputs from CLI, suite config, and env."""
+
+    def test_attributes_loaded_from_cli(  # pylint: disable=redefined-outer-name
         self, test_suite_handler: SuiteHandler, configuration_class_helper: ConfigurationClassHelper
     ):
         """Tests that all non-excluded command-line arguments are correctly parsed and
@@ -629,7 +631,9 @@ class TestConfigurationSources:
         )
 
     @pytest.mark.dependency(depends=["TestConfigurationSources::test_attributes_loaded_from_cli"])
-    def test_suite_config(self, test_suite_handler: SuiteHandler, configuration_class_helper: ConfigurationClassHelper):
+    def test_suite_config(  # pylint: disable=redefined-outer-name
+        self, test_suite_handler: SuiteHandler, configuration_class_helper: ConfigurationClassHelper
+    ):
         """Tests that configuration values from the suite config file are correctly loaded.
 
         Args:
@@ -656,7 +660,7 @@ class TestConfigurationSources:
         ), f"Expected framework_version {TEST_VERSION!r} from config file, got {config.run_version!r}"
 
     @pytest.mark.dependency(depends=["TestConfigurationSources::test_attributes_loaded_from_cli"])
-    def test_attributes_loaded_from_env(
+    def test_attributes_loaded_from_env(  # pylint: disable=redefined-outer-name
         self, test_suite_handler: SuiteHandler, configuration_class_helper: ConfigurationClassHelper
     ):
         """Tests that all non-excluded environment variables are correctly parsed and
@@ -699,7 +703,9 @@ class TestConfigurationSources:
     ]
 )
 class TestConfigurationOthers:
-    def test_configuration_priority(
+    """Integration tests for configuration precedence and utility modes."""
+
+    def test_configuration_priority(  # pylint: disable=redefined-outer-name
         self, test_suite_handler: SuiteHandler, configuration_class_helper: ConfigurationClassHelper
     ):
         """Tests the priority of configuration loading, confirming that CLI overrides ENV.
@@ -771,7 +777,7 @@ class TestConfigurationOthers:
             failed_assertions
         )
 
-    def test_suite_config_strict_load(
+    def test_suite_config_strict_load(  # pylint: disable=redefined-outer-name
         self, test_suite_handler: SuiteHandler, configuration_class_helper: ConfigurationClassHelper
     ):
         """Tests that the suite config file strictly sets suite setup values,
@@ -810,7 +816,9 @@ class TestConfigurationOthers:
             mock_test_suite.suite_support_path == config.suite_support_path
         ), "Support path mismatch: Expected path from suite config, but was overridden."
 
-    def test_utility_mode(self, configuration_class_helper: ConfigurationClassHelper, capsys: pytest.CaptureFixture):
+    def test_utility_mode(  # pylint: disable=redefined-outer-name
+        self, configuration_class_helper: ConfigurationClassHelper, capsys: pytest.CaptureFixture
+    ):
         """Tests that help/utility arguments are correctly handled:
         1. --help causes a SystemExit (code 0) and print help message.
         2. Other utility flags bypass the mandatory suite check.
@@ -867,7 +875,11 @@ class TestConfigurationOthers:
     ]
 )
 class TestConfigurationErrors:
-    def test_excluded_env(self, test_suite_handler: SuiteHandler, configuration_class_helper: ConfigurationClassHelper):
+    """Integration tests for configuration error handling and validation failures."""
+
+    def test_excluded_env(  # pylint: disable=redefined-outer-name
+        self, test_suite_handler: SuiteHandler, configuration_class_helper: ConfigurationClassHelper
+    ):
         """
         Tests that environment variables which are explicitly excluded (listed in
         ENV_EXCLUDED_OPTIONS) correctly raise a ConfigError when an attempt is made to set them.
@@ -888,24 +900,21 @@ class TestConfigurationErrors:
             with pytest.raises(ConfigError, match=re.escape(match)):
                 configuration_class_helper.create_configuration(mock_test_suite, envs={env_name: option.env_input})
 
-    def test_missing_suite_arg(
-        self, test_suite_handler: SuiteHandler, configuration_class_helper: ConfigurationClassHelper
+    def test_missing_suite_arg(  # pylint: disable=redefined-outer-name
+        self, configuration_class_helper: ConfigurationClassHelper
     ):
         """Tests that Configuration raises SystemExit when the required '--suite' argument is missing.
 
         Args:
-            mock_test_suite (MockTestSuite): Fixture to set up the mock suite structure.
-            arg_env_setter (ArgEnvSetter): Fixture to set command-line arguments.
+            configuration_class_helper (ConfigurationClassHelper): Helper for configuring Configuration instances.
         """
-        mock_test_suite = test_suite_handler.init()
-
         # Expected behavior: argparse.error is called, raising SystemExit with a non-zero code.
         with pytest.raises(SystemExit) as excinfo:
-            configuration_class_helper.create_configuration(mock_test_suite, exclude_default_args=True)
+            configuration_class_helper.create_configuration()
 
         assert excinfo.value.code != 0, "Expected SystemExit with error code, got success code."
 
-    def test_suite_path_errors(
+    def test_suite_path_errors(  # pylint: disable=redefined-outer-name
         self, test_suite_handler: SuiteHandler, configuration_class_helper: ConfigurationClassHelper
     ):
         """Tests that Configuration raises a ConfigError when required suite paths
@@ -955,7 +964,7 @@ class TestConfigurationErrors:
             f"{mock_test_suite.suite!r} (expected: {mock_test_suite.suite_support_path!r})",
         )
 
-    def test_unrecognized_argument(
+    def test_unrecognized_argument(  # pylint: disable=redefined-outer-name
         self, configuration_class_helper: ConfigurationClassHelper, capsys: pytest.CaptureFixture
     ):
         """Tests that passing an unrecognized command-line argument causes the parser

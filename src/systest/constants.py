@@ -14,25 +14,39 @@ OPTIONS: Options = [
             "-s",
             "--suite",
         ),
-        dict(dest="suite", action="store", type=str, help="The test suite to execute (e.g., 'mock', 'r2d2-3.2.1')."),
+        {
+            "dest": "suite",
+            "action": "store",
+            "type": str,
+            "help": "The test suite to execute (e.g., 'mock', 'r2d2-3.2.1').",
+        },
     ),
     (
         ("--suites-dir",),
-        dict(
-            dest="suites_directory", action="store", type=Path, help="The directory containing all test suites folders."
-        ),
+        {
+            "dest": "suites_directory",
+            "action": "store",
+            "type": Path,
+            "help": "The directory containing all test suites folders.",
+        },
     ),
     (
         ("--create-suite",),
-        dict(
-            dest="create_suite_name",
-            action="store",
-            type=str,
-            help="Creates a new test suite directory structure, named by the argument.",
-        ),
+        {
+            "dest": "create_suite_name",
+            "action": "store",
+            "type": str,
+            "help": "Creates a new test suite directory structure, named by the argument.",
+        },
     ),
-    (("--cycle-id",), dict(dest="cycle_id", action="store", type=str, help="Zephyr test cycle id/key (e.g., SIR-R3).")),
-    (("--config",), dict(dest="config", action="store", type=str, help="Specify the path to a configuration file.")),
+    (
+        ("--cycle-id",),
+        {"dest": "cycle_id", "action": "store", "type": str, "help": "Zephyr test cycle id/key (e.g., SIR-R3)."},
+    ),
+    (
+        ("--config",),
+        {"dest": "config", "action": "store", "type": str, "help": "Specify the path to a configuration file."},
+    ),
 ]
 
 ENV_SEQUENCE_OPTIONS: Set = {"name", "tags", "format", "outfiles", "userdata_defines", "paths"}

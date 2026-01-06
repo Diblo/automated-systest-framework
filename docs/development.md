@@ -101,12 +101,12 @@ OPTIONS: Options = [
         # ... existing ...
 
         ("-t", "--test"),
-        dict(
-            dest="test",
-            action="store",
-            type=str,
-            help="Specify a test argument."
-        )
+        {
+            "dest": "test",
+            "action": "store",
+            "type": str,
+            "help": "Specify a test argument.",
+        },
     ),
 ]
 ```

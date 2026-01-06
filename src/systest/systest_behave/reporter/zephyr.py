@@ -22,8 +22,8 @@ class ZephyrReporter(Reporter):
     to test management systems Zephyr (Jira).
     """
 
-    def __init__(self, config):
-        super(ZephyrReporter, self).__init__(config)
+    def __init__(self, config: "Configuration") -> None:
+        super().__init__(config)
         self.features: List[Feature] = []
         # Store final results here (True = PASSED, False = FAILED)
         self.test_results: Dict[Tag, bool] = {}

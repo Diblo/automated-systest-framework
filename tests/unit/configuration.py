@@ -78,7 +78,7 @@ class ConfigurationModuleHelper(ModuleHelper):
 
     def __init__(self, mocker: MockerFixture):
         """Initializes the helper, automatically targeting the 'configuration' module."""
-        super(ConfigurationModuleHelper, self).__init__(mocker, configuration)
+        super().__init__(mocker, configuration)
 
 
 # --- Fixtures ---
@@ -98,8 +98,14 @@ class TestLoadEnvironmentSettings:
     a dictionary with values from SYSTEST_-prefixed environment variables.
     """
 
-    def test_load_various_types_correctly(self, configuration_module_helper: ConfigurationModuleHelper):
-        """Test loading string, boolean, integer, sequence, and user data types correctly."""
+    def test_load_various_types_correctly(  # pylint: disable=redefined-outer-name
+        self, configuration_module_helper: ConfigurationModuleHelper
+    ):
+        """Test loading string, boolean, integer, sequence, and user data types correctly.
+
+        Args:
+            configuration_module_helper (ConfigurationModuleHelper): Helper for patching configuration.
+        """
         defaults = {"other_key": "initial_value"}
 
         configuration_module_helper.mock_func(
@@ -135,8 +141,14 @@ class TestLoadEnvironmentSettings:
             "userdata_defines": [("key1", "value1"), ("key2", "value2"), ("key3", "value3")],
         }, "Loaded environment settings did not match expected dictionary structure or type conversion failed."
 
-    def test_skip_non_systest_vars(self, configuration_module_helper: ConfigurationModuleHelper):
-        """Test that environment variables without the SYSTEST_ prefix are ignored."""
+    def test_skip_non_systest_vars(  # pylint: disable=redefined-outer-name
+        self, configuration_module_helper: ConfigurationModuleHelper
+    ):
+        """Test that environment variables without the SYSTEST_ prefix are ignored.
+
+        Args:
+            configuration_module_helper (ConfigurationModuleHelper): Helper for patching configuration.
+        """
         defaults = {}
         configuration_module_helper.mock_func(
             "build_environment_values",
@@ -155,8 +167,14 @@ class TestLoadEnvironmentSettings:
             "setting_b": "value_B",
         }, "Only SYSTEST_ prefixed variables should be loaded into defaults."
 
-    def test_skip_empty_or_whitespace_values(self, configuration_module_helper: ConfigurationModuleHelper):
-        """Test that environment variables with empty strings or whitespace-only values are skipped."""
+    def test_skip_empty_or_whitespace_values(  # pylint: disable=redefined-outer-name
+        self, configuration_module_helper: ConfigurationModuleHelper
+    ):
+        """Test that environment variables with empty strings or whitespace-only values are skipped.
+
+        Args:
+            configuration_module_helper (ConfigurationModuleHelper): Helper for patching configuration.
+        """
         defaults = {}
         configuration_module_helper.mock_func(
             "build_environment_values",
@@ -176,8 +194,14 @@ class TestLoadEnvironmentSettings:
             "var_4": "valid_again",
         }, "Empty or whitespace-only environment variables were incorrectly loaded or stripped."
 
-    def test_raise_error_on_excluded_options(self, configuration_module_helper: ConfigurationModuleHelper):
-        """Test that using an option listed in ENV_EXCLUDED_OPTIONS raises ConfigError."""
+    def test_raise_error_on_excluded_options(  # pylint: disable=redefined-outer-name
+        self, configuration_module_helper: ConfigurationModuleHelper
+    ):
+        """Test that using an option listed in ENV_EXCLUDED_OPTIONS raises ConfigError.
+
+        Args:
+            configuration_module_helper (ConfigurationModuleHelper): Helper for patching configuration.
+        """
         defaults = {}
         configuration_module_helper.mock_func(
             "build_environment_values",
@@ -192,8 +216,14 @@ class TestLoadEnvironmentSettings:
         with pytest.raises(ConfigError, match=match):
             configuration_module_helper.module.load_environment_settings(defaults)
 
-    def test_handle_empty_config_name(self, configuration_module_helper: ConfigurationModuleHelper):
-        """Test handling of environment variable with only the prefix (SYSTEST_)."""
+    def test_handle_empty_config_name(  # pylint: disable=redefined-outer-name
+        self, configuration_module_helper: ConfigurationModuleHelper
+    ):
+        """Test handling of environment variable with only the prefix (SYSTEST_).
+
+        Args:
+            configuration_module_helper (ConfigurationModuleHelper): Helper for patching configuration.
+        """
         defaults = {}
         configuration_module_helper.mock_func(
             "build_environment_values",
@@ -205,11 +235,17 @@ class TestLoadEnvironmentSettings:
         configuration_module_helper.module.load_environment_settings(defaults)
 
         # The variable name (after stripping 'SYSTEST_') is empty, so it should be skipped
-        assert defaults == {}, "Malformed SYSTEST_ environment variable polluted the defaults dictionary."
+        assert not defaults, "Malformed SYSTEST_ environment variable polluted the defaults dictionary."
 
     @pytest.mark.run(order=999)
-    def test_verbose_output(self, configuration_module_helper: ConfigurationModuleHelper):
-        """Test that verbose logging is triggered and formatted correctly."""
+    def test_verbose_output(  # pylint: disable=redefined-outer-name
+        self, configuration_module_helper: ConfigurationModuleHelper
+    ):
+        """Test that verbose logging is triggered and formatted correctly.
+
+        Args:
+            configuration_module_helper (ConfigurationModuleHelper): Helper for patching configuration.
+        """
         defaults = {}
 
         # Define environment variables covering all test cases:

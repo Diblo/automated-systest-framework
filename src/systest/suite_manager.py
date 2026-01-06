@@ -74,7 +74,7 @@ def _is_empty_or_only_comments(file_path: Path) -> bool:
     Returns:
         bool: True if the file is empty or contains only comments, False otherwise.
     """
-    with open(file_path, "r") as f:
+    with open(file_path, "r", encoding="utf-8") as f:
         for line in f:
             stripped_line = line.strip()
             if stripped_line and not stripped_line.startswith("#"):
@@ -230,10 +230,10 @@ def create_suite(suite_name: str, suites_path: Path) -> None:
     (suite_path / SUITE_SUPPORT_FOLDER).mkdir()
 
     # Create and Populate Placeholder Files
-    with open(suite_path / SUITE_CONFIG_FILE, "w") as f:
+    with open(suite_path / SUITE_CONFIG_FILE, "w", encoding="utf-8") as f:
         f.write(SUITE_DEFAULT_CONFIG_CONTENT)
 
-    with open(suite_path / SUITE_REQUIREMENTS_FILE, "w") as f:
+    with open(suite_path / SUITE_REQUIREMENTS_FILE, "w", encoding="utf-8") as f:
         f.write(SUITE_DEFAULT_REQUIREMENTS_CONTENT)
 
     (suite_path / SUITE_SUPPORT_FOLDER / "__init__.py").touch()

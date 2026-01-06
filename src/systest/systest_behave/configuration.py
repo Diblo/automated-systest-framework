@@ -266,6 +266,7 @@ EXAMPLES:
     return parser
 
 
+# pylint: disable=too-many-instance-attributes
 class Configuration(BehaveConfiguration):
     """
     Central configuration class for the systest framework.
@@ -322,9 +323,7 @@ class Configuration(BehaveConfiguration):
         systes_parsed_args, behave_command_args = Configuration.parse_systest_args(command_args, **defaults)
 
         # 4. Initialize Behave Configuration
-        super(Configuration, self).__init__(
-            command_args=behave_command_args, load_config=load_config, verbose=verbose, **defaults
-        )
+        super().__init__(command_args=behave_command_args, load_config=load_config, verbose=verbose, **defaults)
 
         # 5. Apply the parsed arguments
         for key, value in systes_parsed_args.__dict__.items():
@@ -347,7 +346,7 @@ class Configuration(BehaveConfiguration):
             verbose (Optional[bool], optional): Verbosity setting. Defaults to None.
             **kwargs (DefaultValues): Hand-over configuration dictionary.
         """
-        super(Configuration, self).init(verbose=verbose, **kwargs)
+        super().init(verbose=verbose, **kwargs)
 
         self.lang: str = "en"
 
@@ -390,7 +389,7 @@ class Configuration(BehaveConfiguration):
             if next_arg not in COLOR_CHOICES:
                 command_args.insert(color_arg_pos + 1, "auto")
 
-        return super(Configuration, self).make_command_args(command_args=command_args, verbose=verbose)
+        return super().make_command_args(command_args=command_args, verbose=verbose)
 
     def auto_discover(
         self, command_args: Optional[CommandArgs] = None, verbose: Optional[bool] = None

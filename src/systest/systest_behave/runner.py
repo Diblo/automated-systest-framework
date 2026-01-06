@@ -226,7 +226,7 @@ class SystestRunner(ModelRunner):
 
                 # Determine the feature area name (the first component after the features root)
                 feature_area_folder = relative_path.parts[0]
-            except ValueError:
+            except ValueError as e:
                 # Path resolves outside the feature directory. This is a hard error.
                 if self.config.verbose:
                     print(
@@ -237,7 +237,7 @@ class SystestRunner(ModelRunner):
                 raise ConfigError(
                     f"Path {str(resolved_path)!r} is not inside the Test Suite's "
                     f"feature directory: {str(features_path)!r}"
-                )
+                ) from e
 
             resolved_feature_files = [
                 filename
