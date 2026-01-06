@@ -26,7 +26,7 @@ class ModelWrapper(typing.Generic[T]):
         """
         self.wrapped = wrapped
 
-    def __getattr__(self, name: str):
+    def __getattr__(self, name: str) -> typing.Any:
         """Delegate attribute access to the wrapped object.
 
         Args:
@@ -45,7 +45,7 @@ class ModelWrapper(typing.Generic[T]):
         """
         return self.wrapped
 
-    def done(self):
+    def done(self) -> None:
         """Run the wrapped cleanup method."""
         raise NotImplementedError()
 
@@ -58,11 +58,11 @@ class ReporterWrapper(ModelWrapper[Reporter]):
     """
 
     @override
-    def done(self):
+    def done(self) -> None:
         """Call the original Reporter.end() for cleanup."""
         self.wrapped.end()
 
-    def end(self):
+    def end(self) -> None:
         """Override end() to prevent premature cleanup."""
 
 
@@ -74,9 +74,9 @@ class FormatterWrapper(ModelWrapper[Formatter]):
     """
 
     @override
-    def done(self):
+    def done(self) -> None:
         """Call the original Formatter.close() for resource closing."""
         self.wrapped.close()
 
-    def close(self):
+    def close(self) -> None:
         """Overrides the original close() method to prevent premature resource closing."""

@@ -1,7 +1,7 @@
 """Shared constants for systest framework."""
 
 from pathlib import Path
-from typing import Set
+from typing import List, Set, Tuple
 
 from .types import Options
 
@@ -74,10 +74,10 @@ ENV_EXCLUDED_OPTIONS: Set = {
 USER_CONFIG: str = ".systest"
 """Filename for user-level systest configuration."""
 
-DEFAULT_SUITES_PATH = Path.cwd()
+DEFAULT_SUITES_PATH: Path = Path.cwd()
 """Default path for locating suites."""
 
-SUITE_SUFFIX = "_suite"
+SUITE_SUFFIX: str = "_suite"
 """Suffix appended to suite directory names."""
 
 SUITE_FEATURES_FOLDER: str = "features"
@@ -98,7 +98,7 @@ SUITE_LIB_FOLDER: str = ".lib"
 SUITE_ENV_FILE: str = ".env"
 """Default environment filename for suites."""
 
-SUITE_DEFAULT_CONFIG_CONTENT = """# Specifies the framework version the test suite is guaranteed to support.
+SUITE_DEFAULT_CONFIG_CONTENT: str = """# Specifies the framework version the test suite is guaranteed to support.
 # The framework uses this to ensure compatibility before execution.
 # framework_version=0.0.1
 
@@ -112,7 +112,7 @@ SUITE_DEFAULT_CONFIG_CONTENT = """# Specifies the framework version the test sui
 """
 """Template content for a new suite configuration file."""
 
-SUITE_DEFAULT_REQUIREMENTS_CONTENT = """# Specific Python dependencies required for running this test suite.
+SUITE_DEFAULT_REQUIREMENTS_CONTENT: str = """# Specific Python dependencies required for running this test suite.
 #
 # Examples:
 #
@@ -129,10 +129,10 @@ SUITE_DEFAULT_REQUIREMENTS_CONTENT = """# Specific Python dependencies required 
 """
 """Template content for a new suite requirements file."""
 
-SYSTEST_FORMATS = [
+SYSTEST_FORMATS: List[Tuple[str, str]] = [
     # e.g ("test",   "systest.systest_behave.formatter.test:Test")
 ]
 """Additional behave formatter registrations."""
 
-DEFAULT_RUNNER = "systest.systest_behave.runner:SystestRunner"
+DEFAULT_RUNNER: str = "systest.systest_behave.runner:SystestRunner"
 """Default runner path."""

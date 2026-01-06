@@ -33,7 +33,7 @@ class CompareVersion(Enum):
     GREATER: int = 1
     """Indicates that version 1 is chronologically newer than version 2 (v1 > v2)."""
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
 
 
@@ -79,7 +79,7 @@ class VersionDiff(Enum):
     MAJOR = 3
     """The major number has changed (e.g., 1.1.0 to 2.0.0)."""
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
 
 

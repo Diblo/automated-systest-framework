@@ -95,7 +95,7 @@ class FileLocation(BehaveFileLocation):
     its use in a set for feature collection.
     """
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         """Compute a hash based on filename and line."""
         return hash((self.filename, self.line))
 
@@ -123,7 +123,7 @@ def resolve_feature(path: Path, line_number: Optional[int]) -> List[FileLocation
     return []
 
 
-def make_formatters(config: Configuration, stream_openers: StreamOpener):
+def make_formatters(config: Configuration, stream_openers: StreamOpener) -> List[FormatterWrapper]:
     """Build a list of formatters for the behave runner.
 
     Args:
@@ -160,7 +160,7 @@ class SystestRunner(ModelRunner):
         self.original_paths: List[str] = []
         self.feature_locations: Dict[str, List[FileLocation]] = {}
 
-    def load_hooks(self, feature_area_path: Path):
+    def load_hooks(self, feature_area_path: Path) -> None:
         """Load the environment file (e.g., 'environment.py') for a feature area.
 
         Args:
@@ -171,7 +171,7 @@ class SystestRunner(ModelRunner):
         if hooks_path.is_file():
             exec_file(hooks_path, self.hooks)
 
-    def load_step_definitions(self, feature_area_path: Path):
+    def load_step_definitions(self, feature_area_path: Path) -> None:
         """Load step definition modules for a feature area.
 
         Args:
@@ -287,7 +287,7 @@ class SystestRunner(ModelRunner):
         # Restore the original input paths
         self.config.paths = self.original_paths
 
-    def run(self):
+    def run(self) -> int:
         """Runs features, iterating over groups defined by feature area folders.
 
         For each feature area, the runner state (base directory, steps, hooks) is
@@ -318,7 +318,7 @@ class SystestRunner(ModelRunner):
 
         return failed
 
-    def run_feature_area(self, name: str):
+    def run_feature_area(self, name: str) -> int:
         """Execute all features belonging to a single feature area folder.
 
         Args:

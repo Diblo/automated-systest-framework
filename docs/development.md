@@ -265,7 +265,7 @@ during the test run.
 Register the formatter in `src/systest/constants.py` by appending to `SYSTEST_FORMATS`:
 
 ```python
-SYSTEST_FORMATS = [
+SYSTEST_FORMATS: List[Tuple[str, str]] = [
     # ... existing ...
 
     ("test", "systest.systest_behave.formatter.test:TestFormatter")

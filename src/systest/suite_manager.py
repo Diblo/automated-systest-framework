@@ -5,7 +5,7 @@ import site
 import subprocess
 import sys
 from pathlib import Path
-from typing import Dict, Iterator, List, Tuple
+from typing import Dict, Iterator, List, Optional, Tuple
 
 from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
@@ -142,7 +142,7 @@ def _is_requirements_satisfied(requirements_file: Path, lib_path: str) -> bool:
     return True
 
 
-def install_suite_dependencies(lib_path: Path, requirements_file: Path = None, verbose: bool = False) -> None:
+def install_suite_dependencies(lib_path: Path, requirements_file: Optional[Path] = None, verbose: bool = False) -> None:
     """Install suite dependencies into a local directory.
 
     Installs dependencies from the suite requirements file and adds the target
@@ -150,7 +150,7 @@ def install_suite_dependencies(lib_path: Path, requirements_file: Path = None, v
 
     Args:
         lib_path (Path): Directory path where dependencies should be installed.
-        requirements_file (Path, optional): Path to the requirements.txt file.
+        requirements_file (Optional[Path]): Path to the requirements.txt file.
         verbose (bool): If True, provides detailed output during installation checks.
 
     Raises:

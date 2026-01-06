@@ -1,11 +1,14 @@
 """Aggregate behave results for Zephyr reporting."""
 
-from typing import Dict, List, Set
+from typing import TYPE_CHECKING, Dict, List, Set
 
 from behave.model import Feature, Tag
 from behave.reporter.base import Reporter
 
-TEST_IDENTIFICATION_PREFIX = "SIR-T"
+if TYPE_CHECKING:
+    from ..configuration import Configuration
+
+TEST_IDENTIFICATION_PREFIX: str = "SIR-T"
 """Prefix used to identify test ID tags in features."""
 
 
@@ -33,7 +36,7 @@ class ZephyrReporter(Reporter):
         # Store final results here (True = PASSED, False = FAILED)
         self.test_results: Dict[Tag, bool] = {}
 
-    def feature(self, feature: Feature):
+    def feature(self, feature: Feature) -> None:
         """Called after a feature was processed.
 
         Args:
@@ -41,7 +44,7 @@ class ZephyrReporter(Reporter):
         """
         self.features.append(feature)
 
-    def build_result(self):
+    def build_result(self) -> None:
         """Aggregate scenario and feature outcomes by test ID tag."""
         # `~behave.model.Feature` attributes are:
         #     * keyword (str): This is the keyword as seen in the *feature file*. In English this will be "Feature".
@@ -111,7 +114,7 @@ class ZephyrReporter(Reporter):
                 if tag not in self.test_results or self.test_results[tag] is True:
                     self.test_results[tag] = feature.status.is_passed()
 
-    def report_to_zephyr(self):
+    def report_to_zephyr(self) -> None:
         """
         Placeholder method to send final results to the Zephyr/Jira API.
         """
@@ -125,7 +128,7 @@ class ZephyrReporter(Reporter):
             print(f"Test ID: {test_id} -> Final Status: {status}")
         print("-----------------------------------")
 
-    def end(self):
+    def end(self) -> None:
         """Finalize reporting after all model elements are processed."""
         self.build_result()
         self.report_to_zephyr()

@@ -304,7 +304,7 @@ class Configuration(BehaveConfiguration):
         load_config: bool = True,
         verbose: Optional[bool] = None,
         **kwargs: DefaultValues,
-    ):
+    ) -> None:
         """Initializes configuration by loading defaults, kwargs, config file,
         env vars, and parsing CLI arguments.
 
@@ -347,7 +347,7 @@ class Configuration(BehaveConfiguration):
         self.wrap_reporters()
 
     @override
-    def init(self, verbose: Optional[bool] = None, **kwargs: DefaultValues):
+    def init(self, verbose: Optional[bool] = None, **kwargs: DefaultValues) -> None:
         """Initializes internal state.
 
         Args:
@@ -372,7 +372,7 @@ class Configuration(BehaveConfiguration):
 
     @override
     @classmethod
-    def make_defaults(cls, **kwargs):
+    def make_defaults(cls, **kwargs: DefaultValues) -> DefaultValues:
         """Build default values for a configuration instance.
 
         Args:
@@ -386,7 +386,9 @@ class Configuration(BehaveConfiguration):
         return super().make_defaults(**defaults)
 
     @override
-    def make_command_args(self, command_args: Optional[CommandArgs] = None, verbose: Optional[bool] = None):
+    def make_command_args(
+        self, command_args: Optional[CommandArgs] = None, verbose: Optional[bool] = None
+    ) -> CommandArgs:
         """Normalize command arguments before parsing.
 
         Args:
@@ -467,7 +469,7 @@ class Configuration(BehaveConfiguration):
         # parse_known_args consumes the systest options, leaving the rest.
         return parser.parse_known_args(command_args)
 
-    def setup_suites(self):
+    def setup_suites(self) -> None:
         """Validate and normalize the suites directory path."""
         if isinstance(self.suites_directory, str):
             self.suites_directory = Path(self.suites_directory)
@@ -477,7 +479,7 @@ class Configuration(BehaveConfiguration):
         if not self.suites_directory.is_dir():
             raise ConfigError(f"Suites directory not found: {self.suites_directory!r}")
 
-    def setup_suite_create(self, parser: argparse.ArgumentParser):
+    def setup_suite_create(self, parser: argparse.ArgumentParser) -> None:
         """Validate suite creation arguments.
 
         Args:
@@ -493,7 +495,7 @@ class Configuration(BehaveConfiguration):
         if suite_path.exists():
             parser.error(f"The Test Suite already exists: {suite_path!r}")
 
-    def setup_suite(self, parser: argparse.ArgumentParser):
+    def setup_suite(self, parser: argparse.ArgumentParser) -> None:
         """Validate and resolve suite paths and configuration.
 
         Args:
@@ -558,11 +560,11 @@ class Configuration(BehaveConfiguration):
         # Set the request framework version
         self.run_version = suite_config.framework_version
 
-    def setup_systest_reporters(self):
+    def setup_systest_reporters(self) -> None:
         """Attach systest-specific reporters based on configuration."""
         if self.cycle_id:
             self.reporters.append(ZephyrReporter(self))
 
-    def wrap_reporters(self):
+    def wrap_reporters(self) -> None:
         """Wrap behave reporters to delay lifecycle end."""
         self.reporters = [ReporterWrapper(reporter) for reporter in self.reporters if isinstance(reporter, Reporter)]
