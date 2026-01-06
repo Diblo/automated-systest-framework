@@ -1,3 +1,5 @@
+"""Behave configuration helpers tailored to systest."""
+
 import argparse
 import logging
 import os
@@ -38,19 +40,24 @@ __all__ = ["Configuration"]
 
 
 class SuiteConfig(NamedTuple):
+    """Suite configuration values parsed from a suite config file."""
+
     framework_version: str = ""
+    """Framework version declared in the suite configuration."""
     features_folder: str = ""
+    """Directory name that contains feature area folders."""
     support_folder: str = ""
+    """Directory name that contains shared support code."""
 
 
 def parse_suite_conf(file_path: Path) -> SuiteConfig:
     """Parses a .systestrc file.
 
     Args:
-        file_path: The Path object pointing to the configuration file (.systestrc).
+        file_path (Path): Path to the configuration file (.systestrc).
 
     Returns:
-        A SuiteConfig instance populated with settings from the file or defaults.
+        SuiteConfig: Settings populated from the file or defaults.
     """
     if file_path.is_file():
         loaded_config = dotenv_values(file_path) or {}
@@ -78,11 +85,11 @@ def build_environment_values(cli_file: Optional[Path] = None, verbose: Optional[
     4. Specified Config File (CLI argument) (Highest)
 
     Args:
-        cli_file: Optional path to a configuration file specified via CLI.
-        verbose: If True, prints status messages about file loading.
+        cli_file (Optional[Path]): Optional path to a configuration file specified via CLI.
+        verbose (Optional[bool]): If True, prints status messages about file loading.
 
     Returns:
-        A dictionary containing all environment key-value pairs.
+        Dict[str, str]: Dictionary containing all environment key-value pairs.
     """
     # The loading order ensures correct precedence (Lowest Priority to Highest Priority).
 
@@ -132,18 +139,18 @@ def build_environment_values(cli_file: Optional[Path] = None, verbose: Optional[
 def load_environment_settings(
     defaults: DefaultValues, cli_file: Optional[Path] = None, verbose: Optional[bool] = None
 ) -> None:
-    """Loads configuration settings from sources (ENV, config files)
-    and applies them to the default valuess dictionary.
+    """Loads configuration settings from sources (ENV, config files).
+
+    Applies the parsed values to the provided defaults dictionary.
 
     The function first builds the complete environment dictionary, then iterates
     over variables prefixed with 'SYSTEST_' to parse their values (boolean, int,
     list, or string) and update the 'defaults' dictionary accordingly.
 
     Args:
-        defaults: The dictionary containing default settings, which will be
-                  updated with environment variable values.
-        cli_file: Optional path to a configuration file specified via CLI.
-        verbose: If True, prints status messages about environment variable loading and parsing.
+        defaults (DefaultValues): Defaults dictionary to update.
+        cli_file (Optional[Path]): Optional path to a configuration file specified via CLI.
+        verbose (Optional[bool]): If True, prints status messages about parsing.
     """
 
     env_values = build_environment_values(cli_file, verbose)
@@ -193,16 +200,15 @@ def load_environment_settings(
 
 
 def iter_behave_options(behave_options: Options) -> Iterator[Options]:
-    """
-    Filters Behave's internal option list, omitting flags that are already defined
+    """Filters Behave's internal option list, omitting flags that are already defined
     and handled by the systest framework, or are irrelevant for ArgumentParser.
 
     Args:
-        behave_options: An iterable of options from Behave's configuration.
-                        Each item is a tuple: (option_flags, keyword_arguments).
+        behave_options (Options): Iterable of Behave options as
+                                  (option_flags, keyword_arguments) tuples.
 
     Yields:
-        Options: Filtered option tuples that should be used for configuration file processing.
+        Options: Filtered option tuples for configuration parsing.
     """
     # Calculate the set of all flag names known and handled by systest.
     # This set is used to skip conflicting options.
@@ -228,13 +234,12 @@ def iter_behave_options(behave_options: Options) -> Iterator[Options]:
 
 
 def setup_main_parser() -> argparse.ArgumentParser:
-    """
-    Constructs the ArgumentParser for the systest script.
+    """Construct the ArgumentParser.
 
     It incorporates systest options, and all standard behave options.
 
     Returns:
-        The configured ArgumentParser instance.
+        argparse.ArgumentParser: Configured ArgumentParser instance.
     """
     prog = "systest"
     usage = "%(prog)s -s SUITE [options] [paths ...]"
@@ -278,6 +283,7 @@ class Configuration(BehaveConfiguration):
         "runner": DEFAULT_RUNNER,
         "logging_level": logging.ERROR,
     }
+    """Behave defaults extended with systest overrides."""
 
     systest_defaults: DefaultValues = {
         "suites_directory": DEFAULT_SUITES_PATH,
@@ -285,9 +291,11 @@ class Configuration(BehaveConfiguration):
         "suite_create": None,
         "cycle_id": None,
     }
+    """Default values for systest-specific settings."""
 
     # This will be set by the runner
     base_dir: str = ""
+    """Base directory for the current feature area."""
 
     @override
     def __init__(
@@ -301,9 +309,9 @@ class Configuration(BehaveConfiguration):
         env vars, and parsing CLI arguments.
 
         Args:
-            command_args (CommandArgs): List of command-line arguments (defaults to sys.argv[1:]).
-            load_config (bool): If True, loads settings from config files (defaults to True).
-            verbose (Optional[bool]): Overrides the verbosity setting (Defaults to None).
+            command_args (Optional[CommandArgs]): Command-line arguments (defaults to sys.argv[1:]).
+            load_config (bool): If True, loads settings from config files.
+            verbose (Optional[bool]): Overrides the verbosity setting.
         """
         command_args = self.make_command_args(command_args, verbose)
         cli_config, verbose = self.auto_discover(command_args, verbose)
@@ -343,7 +351,7 @@ class Configuration(BehaveConfiguration):
         """Initializes internal state.
 
         Args:
-            verbose (Optional[bool], optional): Verbosity setting. Defaults to None.
+            verbose (Optional[bool]): Verbosity setting.
             **kwargs (DefaultValues): Hand-over configuration dictionary.
         """
         super().init(verbose=verbose, **kwargs)
@@ -365,12 +373,29 @@ class Configuration(BehaveConfiguration):
     @override
     @classmethod
     def make_defaults(cls, **kwargs):
+        """Build default values for a configuration instance.
+
+        Args:
+            **kwargs (DefaultValues): Values overriding defaults.
+
+        Returns:
+            DefaultValues: Merged defaults for Configuration.
+        """
         defaults = cls.systest_defaults.copy()
         defaults.update(kwargs)
         return super().make_defaults(**defaults)
 
     @override
     def make_command_args(self, command_args: Optional[CommandArgs] = None, verbose: Optional[bool] = None):
+        """Normalize command arguments before parsing.
+
+        Args:
+            command_args (Optional[CommandArgs]): Raw command arguments.
+            verbose (Optional[bool]): Verbosity flag used during parsing.
+
+        Returns:
+            CommandArgs: Normalized argument list.
+        """
         if command_args is None:
             command_args = sys.argv[1:]
 
@@ -394,6 +419,15 @@ class Configuration(BehaveConfiguration):
     def auto_discover(
         self, command_args: Optional[CommandArgs] = None, verbose: Optional[bool] = None
     ) -> Tuple[Optional[Path], bool]:
+        """Discover config file and verbosity settings from CLI arguments.
+
+        Args:
+            command_args (Optional[CommandArgs]): Command-line arguments to inspect.
+            verbose (Optional[bool]): Overrides verbosity detection when provided.
+
+        Returns:
+            Tuple[Optional[Path], bool]: Tuple of CLI config path and verbosity flag.
+        """
         # Config file from command-line args.
         cli_config = None
         if command_args and "--config" in command_args:
@@ -412,19 +446,14 @@ class Configuration(BehaveConfiguration):
     def parse_systest_args(
         cls, command_args: CommandArgs, **kwargs: DefaultValues
     ) -> Tuple[argparse.Namespace, CommandArgs]:
-        """
-        Parses the command-line arguments to separate systest-specific options
-        from the options intended for Behave.
+        """Parse CLI arguments into systest and behave portions.
 
         Args:
-            command_args: The list of command-line arguments.
+            command_args (CommandArgs): List of command-line arguments.
+            **kwargs (DefaultValues): Default values used for options.
 
         Returns:
-            A tuple containing:
-            - parsed_systest_args (argparse.Namespace): Namespace with values for
-            systest-specific arguments defined in OPTIONS.
-            - unknown_args (CommandArgs): The remaining arguments, which are expected
-            to be Behave options.
+            Tuple[argparse.Namespace, CommandArgs]: Parsed systest args and remaining args.
         """
         # Create a temporary parser with only the local (systest) options.
         # add_help=False is crucial to prevent this parser from exiting/printing help.
@@ -439,6 +468,7 @@ class Configuration(BehaveConfiguration):
         return parser.parse_known_args(command_args)
 
     def setup_suites(self):
+        """Validate and normalize the suites directory path."""
         if isinstance(self.suites_directory, str):
             self.suites_directory = Path(self.suites_directory)
 
@@ -448,6 +478,11 @@ class Configuration(BehaveConfiguration):
             raise ConfigError(f"Suites directory not found: {self.suites_directory!r}")
 
     def setup_suite_create(self, parser: argparse.ArgumentParser):
+        """Validate suite creation arguments.
+
+        Args:
+            parser (argparse.ArgumentParser): Parser for reporting CLI errors.
+        """
         if self.create_suite_name is None:
             return
 
@@ -459,6 +494,14 @@ class Configuration(BehaveConfiguration):
             parser.error(f"The Test Suite already exists: {suite_path!r}")
 
     def setup_suite(self, parser: argparse.ArgumentParser):
+        """Validate and resolve suite paths and configuration.
+
+        Args:
+            parser (argparse.ArgumentParser): Parser for reporting CLI errors.
+
+        Raises:
+            ConfigError: If suite paths or folders are invalid.
+        """
         is_utility_mode = any(
             [
                 self.version,
@@ -516,8 +559,10 @@ class Configuration(BehaveConfiguration):
         self.run_version = suite_config.framework_version
 
     def setup_systest_reporters(self):
+        """Attach systest-specific reporters based on configuration."""
         if self.cycle_id:
             self.reporters.append(ZephyrReporter(self))
 
     def wrap_reporters(self):
+        """Wrap behave reporters to delay lifecycle end."""
         self.reporters = [ReporterWrapper(reporter) for reporter in self.reporters if isinstance(reporter, Reporter)]

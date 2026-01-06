@@ -1,3 +1,5 @@
+"""Integration tests for systest configuration module."""
+
 import logging
 import random
 import re
@@ -52,7 +54,7 @@ class OptionConfig:
         arg (str): The command-line argument string (e.g., '--suite').
         attr (ConfigAttr): The expected configuration attribute name and value.
         input (Optional[str]): The value provided on the command line, if any.
-        multi_values (bool): Flag if the argument accepts multiple space-separated values.
+        sequence (bool): Whether the argument accepts multiple space-separated values.
     """
 
     arg: str
@@ -257,7 +259,7 @@ class SuiteHandler:
 
     def __init__(self, tmp_path: Path):
         """
-        Initializes the MockTestSuite paths based on a pytest temporary directory.
+        Initializes the SuiteHandler paths based on a pytest temporary directory.
 
         Args:
             tmp_path (Path): The pytest temporary directory Path fixture.
@@ -277,6 +279,14 @@ class SuiteHandler:
         self.suite_support_path: Path = Path()
 
     def create_suite_folder_name(self, suite_name: str) -> str:
+        """Return the suite folder name derived from a suite name.
+
+        Args:
+            suite_name (str): The suite name to transform into a folder name.
+
+        Returns:
+            str: The suite folder name.
+        """
         return f"{suite_name}_suite"
 
     def create_suite_name(self) -> str:
@@ -304,7 +314,7 @@ class SuiteHandler:
         support_folder: Optional[str] = None,
     ) -> "SuiteHandler":
         """
-        Creates a new MockTestSuite instance, and sets up its attributes.
+        Creates a new SuiteHandler instance, and sets up its attributes.
 
         If `suite_name` is not provided, a unique name is generated.
 
@@ -314,10 +324,10 @@ class SuiteHandler:
             support_folder (Optional[str]): Custom name for the support folder.
 
         Returns:
-            MockTestSuite: The fully initialized and created mock test suite instance.
+            SuiteHandler: The fully initialized and created mock test suite instance.
 
         Raises:
-            Exception: If an attempt to generate a unique suite name fails after 15 tries.
+            RuntimeError: If an attempt to generate a unique suite name fails after 15 tries.
         """
         if suite_name is None:
             # Generate a unique suite name that doesn't conflict with existing directories
@@ -386,7 +396,7 @@ support_folder={self.support_folder}
 
 
 class ConfigurationClassHelper:
-    """A helper class for handling the configuring."""
+    """Helper for configuring and instantiating Configuration."""
 
     def __init__(self, mocker: MockerFixture):
         """
@@ -445,7 +455,7 @@ class ConfigurationClassHelper:
         Configures the environment/arguments and instantiates the Configuration class.
 
         Args:
-            mock_test_suite (MockTestSuite): The mock test suite instance to use for paths/names.
+            suite_handler (Optional[SuiteHandler]): Optional suite handler used to derive default suite arguments.
             args (Optional[List[str]]): Additional command-line arguments to include.
             envs (Optional[Dict[str, str]]): Environment variables to set.
 
@@ -470,6 +480,16 @@ class ConfigurationClassHelper:
 def validate_option(
     config: Configuration, option: OptionConfig, expected_att_value: Optional[Any] = float("inf")
 ) -> Optional[str]:
+    """Validate that a configuration option matches the expected attribute value.
+
+    Args:
+        config (Configuration): The configuration instance under test.
+        option (OptionConfig): The option definition with expected values.
+        expected_att_value (Optional[Any]): Override value to compare against when provided.
+
+    Returns:
+        Optional[str]: A failure message when validation fails, otherwise None.
+    """
     attr_name = option.attr.name
     if expected_att_value == float("inf"):
         expected_att_value = option.attr.value
@@ -504,11 +524,27 @@ def validate_option(
 
 @pytest.fixture
 def test_suite_handler(tmp_path: Path) -> SuiteHandler:
+    """Provide a SuiteHandler instance rooted at pytest's temporary directory.
+
+    Args:
+        tmp_path (Path): The pytest temporary directory Path fixture.
+
+    Returns:
+        SuiteHandler: The SuiteHandler instance for this test.
+    """
     return SuiteHandler(tmp_path)
 
 
 @pytest.fixture
 def configuration_class_helper(mocker: MockerFixture) -> ConfigurationClassHelper:
+    """Provide a ConfigurationClassHelper instance for tests.
+
+    Args:
+        mocker (MockerFixture): The pytest-mock fixture used for patching.
+
+    Returns:
+        ConfigurationClassHelper: The helper instance for configuration tests.
+    """
     return ConfigurationClassHelper(mocker)
 
 
@@ -559,7 +595,8 @@ def test_configuration_basic(  # pylint: disable=redefined-outer-name
     This test confirms the fundamental parsing and path resolution logic is sound.
 
     Args:
-        mock_test_suite (MockTestSuite): Fixture to set up the mock suite structure.
+        test_suite_handler (SuiteHandler): Fixture to set up the mock suite structure.
+        configuration_class_helper (ConfigurationClassHelper): Helper for configuring Configuration instances.
     """
     # Setup a mock suite with default folder names
     mock_test_suite = test_suite_handler.init(
@@ -607,8 +644,8 @@ class TestConfigurationSources:
         This confirms the correct type conversion and attribute assignment for CLI inputs.
 
         Args:
-            mock_test_suite (MockTestSuite): Fixture to set up the mock suite structure.
-            arg_env_setter (ArgEnvSetter): Fixture to set command-line arguments.
+            test_suite_handler (SuiteHandler): Fixture to set up the mock suite structure.
+            configuration_class_helper (ConfigurationClassHelper): Helper for configuring Configuration instances.
         """
         mock_test_suite = test_suite_handler.init()
 
@@ -637,8 +674,8 @@ class TestConfigurationSources:
         """Tests that configuration values from the suite config file are correctly loaded.
 
         Args:
-            mock_test_suite (MockTestSuite): Fixture to set up the mock suite structure.
-            arg_env_setter (ArgEnvSetter): Fixture to set command-line arguments.
+            test_suite_handler (SuiteHandler): Fixture to set up the mock suite structure.
+            configuration_class_helper (ConfigurationClassHelper): Helper for configuring Configuration instances.
         """
         # Setup suite with the config file defining custom versions and folders
         mock_test_suite = test_suite_handler.init()
@@ -669,8 +706,8 @@ class TestConfigurationSources:
         This confirms the correct type conversion and attribute assignment for ENV inputs.
 
         Args:
-            mock_test_suite (MockTestSuite): Fixture to set up the mock suite structure.
-            arg_env_setter (ArgEnvSetter): Fixture to set environment variables.
+            test_suite_handler (SuiteHandler): Fixture to set up the mock suite structure.
+            configuration_class_helper (ConfigurationClassHelper): Helper for configuring Configuration instances.
         """
         mock_test_suite = test_suite_handler.init()
 
@@ -714,8 +751,8 @@ class TestConfigurationOthers:
         to the ENV value, as is common for the behave module.
 
         Args:
-            mock_test_suite (MockTestSuite): Fixture to set up the mock suite structure.
-            arg_env_setter (ArgEnvSetter): Fixture to set command-line arguments and environment variables.
+            test_suite_handler (SuiteHandler): Fixture to set up the mock suite structure.
+            configuration_class_helper (ConfigurationClassHelper): Helper for configuring Configuration instances.
         """
         mock_test_suite = test_suite_handler.init()
 
@@ -784,8 +821,8 @@ class TestConfigurationOthers:
         which cannot be overridden by ENV or CLI, ensuring suite integrity.
 
         Args:
-            mock_test_suite (MockTestSuite): Fixture to set up the mock suite structure.
-            arg_env_setter (ArgEnvSetter): Fixture to set command-line arguments and environment variables.
+            test_suite_handler (SuiteHandler): Fixture to set up the mock suite structure.
+            configuration_class_helper (ConfigurationClassHelper): Helper for configuring Configuration instances.
         """
         # Setup Suite
         mock_test_suite = test_suite_handler.init()
@@ -824,7 +861,7 @@ class TestConfigurationOthers:
         2. Other utility flags bypass the mandatory suite check.
 
         Args:
-            arg_env_setter (ArgEnvSetter): Fixture to set command-line arguments.
+            configuration_class_helper (ConfigurationClassHelper): Helper for configuring Configuration instances.
             capsys (pytest.CaptureFixture): Pytest fixture to capture stdout/stderr output.
         """
         # ----------------------------------------
@@ -885,8 +922,8 @@ class TestConfigurationErrors:
         ENV_EXCLUDED_OPTIONS) correctly raise a ConfigError when an attempt is made to set them.
 
         Args:
-            mock_test_suite (MockTestSuite): Fixture to set up the mock suite structure.
-            arg_env_setter (ArgEnvSetter): Fixture to set environment variables.
+            test_suite_handler (SuiteHandler): Fixture to set up the mock suite structure.
+            configuration_class_helper (ConfigurationClassHelper): Helper for configuring Configuration instances.
         """
         mock_test_suite = test_suite_handler.init()
         excluded_options = [option for option in TEST_OPTIONS_MAP if option.attr.name in ENV_EXCLUDED_OPTIONS]
@@ -922,8 +959,8 @@ class TestConfigurationErrors:
         on the filesystem.
 
         Args:
-            mock_test_suite (MockTestSuite): Fixture to set up the mock suite structure.
-            arg_env_setter (ArgEnvSetter): Fixture to set command-line arguments.
+            test_suite_handler (SuiteHandler): Fixture to set up the mock suite structure.
+            configuration_class_helper (ConfigurationClassHelper): Helper for configuring Configuration instances.
         """
         mock_test_suite = test_suite_handler.init()
 
@@ -971,7 +1008,7 @@ class TestConfigurationErrors:
         to exit immediately with a non-zero error code and print the corresponding error message.
 
         Args:
-            arg_env_setter (ArgEnvSetter): Fixture to set command-line arguments.
+            configuration_class_helper (ConfigurationClassHelper): Helper for configuring Configuration instances.
             capsys (pytest.CaptureFixture): Pytest fixture to capture stdout/stderr output.
         """
         unrecognized_arg = "--g"

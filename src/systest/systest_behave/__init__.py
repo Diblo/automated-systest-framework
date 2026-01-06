@@ -1,3 +1,5 @@
+"""Behave integration for systest format registration."""
+
 from behave.formatter import _registry as _behave_registry
 
 from ..constants import SYSTEST_FORMATS

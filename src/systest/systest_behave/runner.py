@@ -1,3 +1,5 @@
+"""Runner for executing systest with behave."""
+
 import glob
 import os
 from pathlib import Path
@@ -17,17 +19,15 @@ from .wrapper import FormatterWrapper, ReporterWrapper
 __all__ = ["SystestRunner"]
 
 
-def iter_make_paths(path: str, base_path: Path) -> Iterator[Tuple[str, Tuple[Path, Optional[str]]]]:
-    """
-    Resolves a single path string (which may contain wildcards or line numbers)
-    into an iterator of resolved, absolute file paths.
+def iter_make_paths(path: str, base_path: Path) -> Iterator[Tuple[str, Tuple[Path, Optional[int]]]]:
+    """Resolve a single path string into absolute file paths.
 
     Args:
-        path: The input path string (e.g., 'features/foo.feature:10' or 'features/*.feature').
-        base_path: The canonical root directory for relative path resolution (suite_features_path).
+        path (str): Input path string (e.g., 'features/foo.feature:10' or 'features/*.feature').
+        base_path (Path): Canonical root directory for relative path resolution.
 
     Yields:
-        A tuple: (original_path_str, (resolved_absolute_path, line_number))
+        Tuple[str, Tuple[Path, Optional[int]]]: Original path and resolved path/line.
     """
     # Separate the path/glob string from the optional line number suffix.
     path_str, *line_part = path.split(":", 1)
@@ -59,16 +59,15 @@ def iter_make_paths(path: str, base_path: Path) -> Iterator[Tuple[str, Tuple[Pat
         yield (path, (resolved_path.absolute(), line_number))
 
 
-def iter_paths(paths: List[str], base_path: Path) -> Iterator[Tuple[str, Tuple[Path, Optional[str]]]]:
-    """
-    Iterates over a list of paths, supporting direct paths, globs, and AT_files (@filename).
+def iter_paths(paths: List[str], base_path: Path) -> Iterator[Tuple[str, Tuple[Path, Optional[int]]]]:
+    """Iterate over paths, supporting globs and @files.
 
     Args:
-        paths: List of path strings.
-        base_path: The canonical root directory for relative path resolution.
+        paths (List[str]): List of path strings.
+        base_path (Path): Canonical root directory for relative path resolution.
 
     Yields:
-        A tuple: (original_path_str, (resolved_absolute_path, line_number))
+        Tuple[str, Tuple[Path, Optional[int]]]: Original path and resolved path/line.
     """
     for path_str in paths:
         if path_str.startswith("@"):
@@ -97,19 +96,19 @@ class FileLocation(BehaveFileLocation):
     """
 
     def __hash__(self):
+        """Compute a hash based on filename and line."""
         return hash((self.filename, self.line))
 
 
 def resolve_feature(path: Path, line_number: Optional[int]) -> List[FileLocation]:
-    """
-    Resolves a path to a list of feature file locations based on file type.
+    """Resolve a path to feature file locations based on file type.
 
     Args:
-        path: The resolved absolute path (file or directory).
-        line_number: Optional line number.
+        path (Path): Resolved absolute path (file or directory).
+        line_number (Optional[int]): Optional line number.
 
     Returns:
-        List of FileLocation objects for features found.
+        List[FileLocation]: Feature file locations found.
     """
     if path.is_dir():
         # RULE 1: Directory targets (e.g., 'foo_bar_initialization/')
@@ -125,11 +124,14 @@ def resolve_feature(path: Path, line_number: Optional[int]) -> List[FileLocation
 
 
 def make_formatters(config: Configuration, stream_openers: StreamOpener):
-    """Build a list of formatter, used by a behave runner.
+    """Build a list of formatters for the behave runner.
 
-    :param config:  Configuration object to use.
-    :param stream_openers: List of stream openers to use (for formatters).
-    :return: List of formatters.
+    Args:
+        config (Configuration): Configuration object to use.
+        stream_openers (StreamOpener): Stream openers for formatter outputs.
+
+    Returns:
+        list[FormatterWrapper]: Wrapped formatter instances.
     """
     # Wrap formatters to prevent premature 'close' calls
     return [FormatterWrapper(formatter) for formatter in behave_make_formatters(config, stream_openers)]
@@ -143,8 +145,14 @@ class SystestRunner(ModelRunner):
     """
 
     config: Configuration
+    """Systest configuration instance."""
 
     def __init__(self, config: Configuration):
+        """Initialize the runner with a configuration instance.
+
+        Args:
+            config (Configuration): Systest configuration instance.
+        """
         super().__init__(config)
 
         # Features are loaded per-area during run(), so this list is unused by this runner.
@@ -153,12 +161,10 @@ class SystestRunner(ModelRunner):
         self.feature_locations: Dict[str, List[FileLocation]] = {}
 
     def load_hooks(self, feature_area_path: Path):
-        """
-        Loads the environment file (e.g., 'environment.py') from the specific
-        feature area path.
+        """Load the environment file (e.g., 'environment.py') for a feature area.
 
         Args:
-            feature_area_path: The absolute path to the current feature area folder.
+            feature_area_path (Path): Absolute path to the feature area folder.
         """
         self.hooks = {}
         hooks_path: Path = feature_area_path / self.config.environment_file
@@ -166,12 +172,10 @@ class SystestRunner(ModelRunner):
             exec_file(hooks_path, self.hooks)
 
     def load_step_definitions(self, feature_area_path: Path):
-        """
-        Loads step definition modules from the 'steps' directory within the
-        specific feature area path.
+        """Load step definition modules for a feature area.
 
         Args:
-            feature_area_path: The absolute path to the current feature area folder.
+            feature_area_path (Path): Absolute path to the feature area folder.
         """
         steps_dir: Path = feature_area_path / self.config.steps_dir
 
@@ -184,13 +188,10 @@ class SystestRunner(ModelRunner):
         load_step_modules(step_paths)
 
     def collect_feature_locations(self) -> Dict[str, List[FileLocation]]:
-        """
-        Resolves input paths (globs, @files, directories, files) and groups the
-        resulting feature files by their top-level feature area folder name.
+        """Collect and group feature files by feature area folder.
 
         Returns:
-            Dict[str, List[FileLocation]]: A dictionary mapping feature area folder names (str)
-                                  to a list of absolute feature file paths (list[str]).
+            Dict[str, List[FileLocation]]: Feature area names mapped to locations.
         """
         grouped_feature_files: Dict[str, Set[str]] = {}
         paths = self.config.paths[:]
@@ -257,9 +258,7 @@ class SystestRunner(ModelRunner):
         return {area_name: sorted(list(feature_set)) for area_name, feature_set in grouped_feature_files.items()}
 
     def setup(self) -> None:
-        """
-        Initializes the runner state before execution begins.
-        """
+        """Initialize runner state before execution begins."""
         self.original_paths = self.config.paths[:]
 
         # Resolve features and group them by feature area
@@ -275,9 +274,7 @@ class SystestRunner(ModelRunner):
         self.formatters = make_formatters(self.config, self.config.outputs)
 
     def finish(self) -> None:
-        """
-        Cleans up the runner state after execution.
-        """
+        """Clean up runner state after execution."""
         # Ensuring formatters and reporters are properly closed
         for formatter in self.formatters:
             if isinstance(formatter, FormatterWrapper):
@@ -297,7 +294,7 @@ class SystestRunner(ModelRunner):
         reloaded to ensure correct path resolution and isolation.
 
         Returns:
-            int: The status (0=success or 1=failure).
+            int: Status code (0=success or 1=failure).
         """
         # NOTE: The default behave runner is designed for a single base directory, which it uses
         #       to locate all steps and the environment file (`environment.py`). Running features
@@ -322,15 +319,13 @@ class SystestRunner(ModelRunner):
         return failed
 
     def run_feature_area(self, name: str):
-        """
-        Executes all features belonging to a single feature area folder.
-        This method is responsible for setting the context for the executed feature area.
+        """Execute all features belonging to a single feature area folder.
 
         Args:
-            name: The name of the feature area folder (e.g., 'foo_bar_initialization').
+            name (str): Feature area folder name (e.g., 'foo_bar_initialization').
 
         Returns:
-            int: The status (0=success or 1=failure).
+            int: Status code (0=success or 1=failure).
         """
         feature_area_path = (self.config.suite_features_path / name).absolute()
 

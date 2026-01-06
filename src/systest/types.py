@@ -1,3 +1,5 @@
+"""Type aliases and compatibility helpers for systest."""
+
 import typing
 from typing import Any, Dict, List, Tuple, Union
 

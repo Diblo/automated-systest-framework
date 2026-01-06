@@ -1,3 +1,5 @@
+"""CLI entry point for the systest test runner."""
+
 import os
 import sys
 import traceback
@@ -17,9 +19,13 @@ __all__ = ["main", "run_systest"]
 
 
 def handle_utility_functions(config: Configuration) -> Optional[int]:
-    """
-    Checks for CLI flags that trigger utility actions instead of running tests.
-    Returns an exit code (int) if an action was performed, otherwise None.
+    """Run CLI utility actions when flagged.
+
+    Args:
+        config (Configuration): The system test configuration.
+
+    Returns:
+        Optional[int]: Exit code if a utility action was performed, otherwise None.
     """
     if config.version:
         print(f"systest {VERSION} & behave {behave_version}")
@@ -34,8 +40,13 @@ def handle_utility_functions(config: Configuration) -> Optional[int]:
 
 @contextmanager
 def handle_test_environment(config: Configuration) -> Generator[None, None, None]:
-    """
-    Context manager that sets up and tears down the test environment.
+    """Set up and tear down the test environment.
+
+    Args:
+        config (Configuration): The system test configuration.
+
+    Yields:
+        None: This context manager does not yield a value.
     """
     # --- SETUP ---
     # Update system env var
@@ -67,14 +78,13 @@ def handle_test_environment(config: Configuration) -> Generator[None, None, None
 
 
 def run_systest(config: Configuration) -> int:
-    """
-    Runs the system tests using the behave framework.
+    """Run system tests using the Behave framework.
 
     Args:
-        config (Configuration): The system test configuration object.
+        config (Configuration): The system test configuration.
 
     Returns:
-        int: The exit status code: 0 if all tests pass, > 0 if any test fails.
+        int: Exit status code (0 for success, >0 for failure).
     """
     # Check for utility commands (create, version, etc.)
     result = handle_utility_functions(config)
@@ -89,11 +99,10 @@ def run_systest(config: Configuration) -> int:
 
 
 def main() -> int:
-    """
-    Main entry point for the systest command-line utility.
+    """Run the systest command-line utility.
 
     Returns:
-        int: The exit status code (0 for success, 1 for any failure).
+        int: Exit status code (0 for success, 1 for failure).
     """
     try:
         config = Configuration(load_config=False)

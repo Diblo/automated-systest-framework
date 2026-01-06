@@ -1,3 +1,5 @@
+"""Unit tests for configuration module."""
+
 import re
 from typing import Any, Iterator, Sequence, Tuple
 
@@ -12,7 +14,7 @@ def check_output(output_lines: Sequence[str], expected_line: str, error_message:
     """Helper to assert that an expected line is present in the captured output.
 
     Args:
-        output_lines (Sequence[str]): A sequence (list or tuple) of captured, stripped print output lines.
+        output_lines (Sequence[str]): Captured, stripped print output lines.
         expected_line (str): The exact string expected to be found in the output.
         error_message (str): The assertion failure message displayed if the expected line is not found.
     """
@@ -20,8 +22,10 @@ def check_output(output_lines: Sequence[str], expected_line: str, error_message:
 
 
 class ModuleHelper:
+    """Helper for patching module attributes and capturing print output."""
+
     def __init__(self, mocker: MockerFixture, module):
-        """Initializes the helper with a mocker fixture and the target module for testning.
+        """Initializes the helper with a mocker fixture and the target module for testing.
 
         Args:
             mocker (MockerFixture): The pytest-mock fixture used for patching.
@@ -39,14 +43,18 @@ class ModuleHelper:
         each argument after stripping leading/trailing whitespace.
 
         Yields:
-            Iterator[str]: The captured and stripped string content of each print call.
+            str: The captured and stripped string content of each print call.
         """
         for call in self.mock_print.call_args_list:
             # call[0][0] is the first positional argument (the string passed to print)
             yield call[0][0].strip()
 
     def get_output_lines(self) -> Tuple[str, ...]:
-        """Returns all captured mock print output lines as a tuple of stripped strings."""
+        """Returns all captured mock print output lines as a tuple of stripped strings.
+
+        Returns:
+            Tuple[str, ...]: The stripped output lines captured from print calls.
+        """
         return tuple(self.iter_mock_output())
 
     def mock_func(self, name: str, return_value: Any) -> None:
@@ -77,7 +85,11 @@ class ConfigurationModuleHelper(ModuleHelper):
     module: configuration
 
     def __init__(self, mocker: MockerFixture):
-        """Initializes the helper, automatically targeting the 'configuration' module."""
+        """Initializes the helper, automatically targeting the 'configuration' module.
+
+        Args:
+            mocker (MockerFixture): The pytest-mock fixture used for patching.
+        """
         super().__init__(mocker, configuration)
 
 
@@ -86,7 +98,14 @@ class ConfigurationModuleHelper(ModuleHelper):
 
 @pytest.fixture
 def configuration_module_helper(mocker: MockerFixture) -> ConfigurationModuleHelper:
-    """Provides a ConfigurationModuleHelper instance for patching the configuration module."""
+    """Provides a ConfigurationModuleHelper instance for patching the configuration module.
+
+    Args:
+        mocker (MockerFixture): The pytest-mock fixture used for patching.
+
+    Returns:
+        ConfigurationModuleHelper: The helper instance for configuration module tests.
+    """
     return ConfigurationModuleHelper(mocker)
 
 

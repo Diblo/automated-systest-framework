@@ -1,3 +1,6 @@
+"""Custom exceptions for systest modules."""
+
+
 class SuiteManagerError(Exception):
     """Base exception for all test suite management errors."""
 

@@ -1,3 +1,5 @@
+"""Pytest configuration."""
+
 import sys
 
 from support import get_project_root_dir, get_test_dir

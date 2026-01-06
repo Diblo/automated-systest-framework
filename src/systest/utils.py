@@ -1,3 +1,5 @@
+"""Utilities module"""
+
 import os
 from enum import Enum
 

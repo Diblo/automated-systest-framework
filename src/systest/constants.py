@@ -1,12 +1,17 @@
+"""Shared constants for systest framework."""
+
 from pathlib import Path
 from typing import Set
 
 from .types import Options
 
 try:
-    VERSION: str = (Path(__file__).parent / "VERSION").read_text().strip()
+    _version: str = (Path(__file__).parent / "VERSION").read_text().strip()
 except FileNotFoundError:
-    VERSION: str = "0.0.0-dev"
+    _version: str = "0.0.0-dev"
+
+VERSION: str = _version
+"""Current systest framework version."""
 
 OPTIONS: Options = [
     (
@@ -48,8 +53,10 @@ OPTIONS: Options = [
         {"dest": "config", "action": "store", "type": str, "help": "Specify the path to a configuration file."},
     ),
 ]
+"""Systest CLI options."""
 
 ENV_SEQUENCE_OPTIONS: Set = {"name", "tags", "format", "outfiles", "userdata_defines", "paths"}
+"""Option names that accept sequence values in environment variables."""
 
 ENV_EXCLUDED_OPTIONS: Set = {
     "suite",
@@ -62,24 +69,34 @@ ENV_EXCLUDED_OPTIONS: Set = {
     "verbose",
     "version",
 }
+"""Option names that are not permitted as environment variables."""
 
 USER_CONFIG: str = ".systest"
+"""Filename for user-level systest configuration."""
 
 DEFAULT_SUITES_PATH = Path.cwd()
+"""Default path for locating suites."""
 
 SUITE_SUFFIX = "_suite"
+"""Suffix appended to suite directory names."""
 
 SUITE_FEATURES_FOLDER: str = "features"
+"""Default folder name for feature files."""
 
 SUITE_SUPPORT_FOLDER: str = "support"
+"""Default folder name for support files."""
 
 SUITE_CONFIG_FILE: str = "suite.conf"
+"""Default configuration filename for suites."""
 
 SUITE_REQUIREMENTS_FILE: str = "requirements.txt"
+"""Default requirements filename for suites."""
 
 SUITE_LIB_FOLDER: str = ".lib"
+"""Default local dependency folder for suites."""
 
 SUITE_ENV_FILE: str = ".env"
+"""Default environment filename for suites."""
 
 SUITE_DEFAULT_CONFIG_CONTENT = """# Specifies the framework version the test suite is guaranteed to support.
 # The framework uses this to ensure compatibility before execution.
@@ -93,6 +110,7 @@ SUITE_DEFAULT_CONFIG_CONTENT = """# Specifies the framework version the test sui
 # The default is usually support.
 # support_folder=support
 """
+"""Template content for a new suite configuration file."""
 
 SUITE_DEFAULT_REQUIREMENTS_CONTENT = """# Specific Python dependencies required for running this test suite.
 #
@@ -109,9 +127,12 @@ SUITE_DEFAULT_REQUIREMENTS_CONTENT = """# Specific Python dependencies required 
 # requests~=2.0        # >= 2.0.0, but < 3.0.0
 # requests<3.0,>=2.0.1 # >= 2.0.1, but < 3.0.0
 """
+"""Template content for a new suite requirements file."""
 
 SYSTEST_FORMATS = [
     # e.g ("test",   "systest.systest_behave.formatter.test:Test")
 ]
+"""Additional behave formatter registrations."""
 
 DEFAULT_RUNNER = "systest.systest_behave.runner:SystestRunner"
+"""Default runner path."""

@@ -1,17 +1,22 @@
+"""Aggregate behave results for Zephyr reporting."""
+
 from typing import Dict, List, Set
 
 from behave.model import Feature, Tag
 from behave.reporter.base import Reporter
 
-# Prefix used to identify test ID tags in features
 TEST_IDENTIFICATION_PREFIX = "SIR-T"
+"""Prefix used to identify test ID tags in features."""
 
 
 def get_test_identification(tags: List[Tag]) -> Set[Tag]:
     """Filters and returns a set of unique test identification tags.
 
     Args:
-        tags (list[Tag]):
+        tags (List[Tag]): Sequence of behave tags to filter.
+
+    Returns:
+        Set[Tag]: Unique tag values that start with the test identification prefix.
     """
     return {tag for tag in tags if tag.startswith(TEST_IDENTIFICATION_PREFIX)}
 
@@ -32,11 +37,12 @@ class ZephyrReporter(Reporter):
         """Called after a feature was processed.
 
         Args:
-            feature (Feature): Feature object
+            feature (Feature): Feature object emitted by behave.
         """
         self.features.append(feature)
 
     def build_result(self):
+        """Aggregate scenario and feature outcomes by test ID tag."""
         # `~behave.model.Feature` attributes are:
         #     * keyword (str): This is the keyword as seen in the *feature file*. In English this will be "Feature".
         #     * name (str): The name of the feature (the text after "Feature".)
@@ -120,8 +126,6 @@ class ZephyrReporter(Reporter):
         print("-----------------------------------")
 
     def end(self):
-        """
-        Called after all model elements are processed.
-        """
+        """Finalize reporting after all model elements are processed."""
         self.build_result()
         self.report_to_zephyr()

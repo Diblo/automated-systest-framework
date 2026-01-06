@@ -25,11 +25,10 @@ __all__ = ["install_suite_dependencies", "create_suite"]
 
 
 def _call_pip(args: List[str], verbose: bool = False) -> None:
-    """
-    Executes a pip command via subprocess and handles standard errors.
+    """Execute a pip command via subprocess and handle errors.
 
     Args:
-        args (List[str]): List of arguments to pass to pip.
+        args (List[str]): Arguments to pass to pip.
         verbose (bool): If True, prints the stdout of the pip command.
 
     Raises:
@@ -65,14 +64,13 @@ def _call_pip(args: List[str], verbose: bool = False) -> None:
 
 
 def _is_empty_or_only_comments(file_path: Path) -> bool:
-    """
-    Checks if a file is empty or if all non-empty lines start with '#'.
+    """Check if a file is empty or only contains comments.
 
     Args:
-        file_path (Path): The path to the file to check.
+        file_path (Path): Path to the file to check.
 
     Returns:
-        bool: True if the file is empty or contains only comments, False otherwise.
+        bool: True if the file is empty or contains only comments.
     """
     with open(file_path, "r", encoding="utf-8") as f:
         for line in f:
@@ -115,16 +113,14 @@ def _parse_requirement_file(requirements_file: Path) -> Iterator[Requirement]:
 
 
 def _is_requirements_satisfied(requirements_file: Path, lib_path: str) -> bool:
-    """
-    Checks if all requirements in the file are satisfied by the packages
-    in the lib_path or system path without installing them.
+    """Check if requirements are satisfied without installing packages.
 
     Args:
         requirements_file (Path): Path to requirements.txt.
         lib_path (str): Path to local library folder.
 
     Returns:
-        bool: True if all requirements are satisfied, False otherwise.
+        bool: True if all requirements are satisfied.
     """
     available_versions: Dict[str, str] = {}
     for name, version in _parse_packages(lib_path):
@@ -147,14 +143,14 @@ def _is_requirements_satisfied(requirements_file: Path, lib_path: str) -> bool:
 
 
 def install_suite_dependencies(lib_path: Path, requirements_file: Path = None, verbose: bool = False) -> None:
-    """
-    Installs the Python dependencies declared in the target test suite's requirements file
-    into a local directory within the suite folder. It then adds this directory to sys.path
-    to make dependencies immediately available to the current process.
+    """Install suite dependencies into a local directory.
+
+    Installs dependencies from the suite requirements file and adds the target
+    directory to sys.path for immediate availability.
 
     Args:
-        lib_path (Path): The directory path where dependencies should be installed (e.g., suite/.lib).
-        requirements_file (Path, optional): The path to the requirements.txt file.
+        lib_path (Path): Directory path where dependencies should be installed.
+        requirements_file (Path, optional): Path to the requirements.txt file.
         verbose (bool): If True, provides detailed output during installation checks.
 
     Raises:
@@ -207,12 +203,11 @@ def install_suite_dependencies(lib_path: Path, requirements_file: Path = None, v
 
 
 def create_suite(suite_name: str, suites_path: Path) -> None:
-    """
-    Creates a new, empty test suite directory structure with necessary manifest files.
+    """Create a new test suite directory structure.
 
     Args:
-        suite_name (str): The name of the test suite (e.g., 'r2d2-4.0.0').
-        suites_path (Path): The root directory where test suites are located.
+        suite_name (str): Name of the test suite (e.g., 'r2d2-4.0.0').
+        suites_path (Path): Root directory where suites are located.
 
     Raises:
         SuiteManagerError: If the Test Suite directory already exists.
