@@ -125,16 +125,14 @@ def install_suite_dependencies(lib_path: Path, requirements_file: Path = None, v
     lib_path_str = str(lib_path.resolve())
 
     # Validation Checks
-    requirements_file_exists = requirements_file is not None and requirements_file.is_file()
-
-    if not requirements_file_exists or _is_empty_or_only_comments(requirements_file):
+    if requirements_file is None or not requirements_file.is_file() or _is_empty_or_only_comments(requirements_file):
         if verbose:
-            if requirements_file_exists:
-                print(f"Skipping: The Test Suite's {requirements_file.name!r} file is empty or comments only.")
-            elif requirements_file is not None:
+            if requirements_file is None:
+                print("Skipping: requirements file not found in the Test Suite.")
+            elif not requirements_file.is_file():
                 print(f"Skipping: {requirements_file.name!r} not found in the Test Suite.")
             else:
-                print("Skipping: requirements file not found in the Test Suite.")
+                print(f"Skipping: The Test Suite's {requirements_file.name!r} file is empty or comments only.")
         return
 
     print("Checking Test Suite dependencies...")
