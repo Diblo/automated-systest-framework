@@ -19,6 +19,7 @@ setup(
     include_package_data=True,
     scripts=["src/bin/systest"],
     install_requires=[
+        "setuptools<68.0,>=67.8.0",
         "behave<2.0,>=1.3.3",
         "dotenv<1.0,>=0.9.9",
         "packaging<26.0,>=25.0",
