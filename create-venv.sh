@@ -96,6 +96,16 @@ install_dependencies() {
 }
 
 ##############################################
+# Dev Cleanup
+##############################################
+cleanup_dev_bin() {
+  if [ -f "${PATH_VENV}/bin/systest" ]; then
+    echo "Removing '${PATH_VENV}/bin/systest' for development mode..."
+    rm -f "${PATH_VENV}/bin/systest"
+  fi
+}
+
+##############################################
 # Main Execution
 ##############################################
 if [ ! -f "setup.py" ] || [ ! -d "src" ]; then
@@ -107,3 +117,6 @@ parse_args "$@"
 
 create_virtual_environment
 install_dependencies
+if [ "${MODE}" -eq 0 ]; then
+  cleanup_dev_bin
+fi
