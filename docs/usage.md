@@ -526,7 +526,7 @@ Syntax Rules:
 SYSTEST_TAGS="@smoke @regression @wip"
 
 # List containing items with spaces (quoted)
-SYSTEST_ARGS='"--browser chrome" "--profile Tablet Mode"'
+SYSTEST_NAME='"^Scenario: Login" "^Scenario: Test$"'
 ```
 
 **Additive Merge**

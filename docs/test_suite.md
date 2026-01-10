@@ -281,7 +281,7 @@ Instead of relying solely on `after_scenario`, you can register cleanup function
 
 ```python
 @given('a temporary database is created')
-def step_create_temp_db(context):
+def step_given(context):
     db = create_database()
     context.db = db
 
@@ -297,7 +297,7 @@ You can call other Gherkin steps from within a Python step.
 
 ```python
 @when('the user performs the full login sequence')
-def step_full_login(context):
+def step_when(context):
     # Runs these steps as if they were in the feature file
     context.execute_steps(u'''
         Given the user navigates to the login page
