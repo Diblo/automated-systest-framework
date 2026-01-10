@@ -1,4 +1,4 @@
-Source: systest-framework
+Source: automated-systest-framework
 Section: utils
 Priority: optional
 Maintainer: Henrik Ankersø <noreply@diblo.dk>
@@ -8,9 +8,8 @@ Standards-Version: 4.6.1
 Package: systest
 Architecture: all
 Depends: python3.8, ${misc:Depends}
-Description: Automated System Test Framework (systest)
-  The robust system designed to automatically run behavioral system tests
-  to ensure the quality, functionality, and reliability of products under test.
-  .
-  This framework is not a single program, but a collection of tools, libraries,
-  and guidelines that standardize, organize, and simplify the testing process.
+Description: System test framework for Behave-based suites
+  Provides a CLI to run behavioral system test suites organized by feature areas
+  and Gherkin .feature files. Enforces a structured suite layout with step
+  definitions and support modules, and supports execution of full suites,
+  feature areas, specific feature files, or individual scenarios.
