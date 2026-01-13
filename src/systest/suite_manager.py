@@ -1,10 +1,14 @@
+"""Suite management helpers for creating and configuring systest suites."""
+
+import importlib.metadata
 import site
 import subprocess
 import sys
 from pathlib import Path
-from typing import List
+from typing import Dict, Iterator, List, Tuple
 
-import pkg_resources
+from packaging.requirements import Requirement
+from packaging.utils import canonicalize_name
 
 from .constants import (
     SUITE_CONFIG_FILE,
@@ -78,6 +82,38 @@ def _is_empty_or_only_comments(file_path: Path) -> bool:
         return True
 
 
+def _parse_packages(lib_path: str) -> Iterator[Tuple[str, str]]:
+    """Yield package names and versions from the lib path and sys.path.
+
+    Args:
+        lib_path (str): Path to local library folder.
+
+    Yields:
+        Tuple[str, str]: Package name and version string.
+    """
+    # lib_path highest priority, sys.path fallback
+    for dist in importlib.metadata.distributions(path=[lib_path] + sys.path):
+        key_map = {k.lower(): k for k in dist.metadata}
+        if "name" in key_map:
+            yield dist.metadata[key_map["name"]], dist.version
+
+
+def _parse_requirement_file(requirements_file: Path) -> Iterator[Requirement]:
+    """Yield parsed Requirement entries from a requirements.txt file.
+
+    Args:
+        requirements_file (Path): Path to requirements.txt.
+
+    Yields:
+        Requirement: Parsed requirement entries.
+    """
+    with open(requirements_file, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith("#"):
+                yield Requirement(line)
+
+
 def _is_requirements_satisfied(requirements_file: Path, lib_path: str) -> bool:
     """
     Checks if all requirements in the file are satisfied by the packages
@@ -90,20 +126,23 @@ def _is_requirements_satisfied(requirements_file: Path, lib_path: str) -> bool:
     Returns:
         bool: True if all requirements are satisfied, False otherwise.
     """
-    # Create a WorkingSet that includes the target .lib directory
-    # This allows us to "simulate" the environment to see if packages exist there
-    ws = pkg_resources.WorkingSet([lib_path] + sys.path)
+    available_versions: Dict[str, str] = {}
+    for name, version in _parse_packages(lib_path):
+        key = canonicalize_name(name)
+        if key not in available_versions:
+            available_versions[key] = version
 
-    with open(requirements_file, "r") as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith("#"):
-                continue
-            try:
-                # require() raises DistributionNotFound or VersionConflict if not satisfied
-                ws.require(line)
-            except (pkg_resources.DistributionNotFound, pkg_resources.VersionConflict):
-                return False
+    for req in _parse_requirement_file(requirements_file):
+        if req.marker and not req.marker.evaluate():
+            return False
+
+        key = canonicalize_name(req.name)
+        if key not in available_versions:
+            return False
+
+        if req.specifier and not req.specifier.contains(available_versions[key], prereleases=True):
+            return False
+
     return True
 
 
