@@ -195,7 +195,7 @@ class SystestRunner(ModelRunner):
         """
         grouped_feature_files: Dict[str, Set[str]] = {}
         paths = self.config.paths[:]
-        features_path = self.config.suite_features_path.absolute()
+        features_path = self.config.suite_data.features_path.absolute()
 
         if not paths:
             if self.config.verbose:
@@ -327,7 +327,7 @@ class SystestRunner(ModelRunner):
         Returns:
             int: Status code (0=success or 1=failure).
         """
-        feature_area_path = (self.config.suite_features_path / name).absolute()
+        feature_area_path = (self.config.suite_data.features_path / name).absolute()
 
         # -- STEP: Sets the context for path resolution
         self.config.base_dir = str(feature_area_path)

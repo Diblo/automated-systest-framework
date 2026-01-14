@@ -60,6 +60,13 @@ sudo sh ./create-venv.sh --create-production "/usr/share/systest/venv"
 sudo ln -sf /usr/share/systest/venv/bin/systest /usr/local/bin/systest
 ```
 
+### 5. Enable Shell Completion (bash)
+
+```shell
+grep -qxF 'eval "$(/usr/share/systest/venv/bin/register-python-argcomplete --shell bash systest)"' ~/.bashrc || echo 'eval "$(/usr/share/systest/venv/bin/register-python-argcomplete --shell bash systest)"' >> ~/.bashrc
+source ~/.bashrc
+```
+
 ### 6. Verify the Installation
 
 ```shell
@@ -120,6 +127,15 @@ You can now run system tests using the full path:
 ```shell
 ~/automated-systest-framework/src/bin/systest
 ```
+
+### 5. Enable Shell Completion (Recommended)
+
+```shell
+grep -qxF 'eval "$(~/automated-systest-framework/.venv/bin/register-python-argcomplete --shell bash ~/automated-systest-framework/src/bin/systest)"' ~/.bashrc || echo 'eval "$(~/automated-systest-framework/.venv/bin/register-python-argcomplete --shell bash ~/automated-systest-framework/src/bin/systest)"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+**NOTE**: It will only work when invoked as `~/automated-systest-framework/src/bin/systest`.
 
 ### 6. Add `systest` to `PATH` (Recommended)
 

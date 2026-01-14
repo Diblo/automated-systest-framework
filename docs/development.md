@@ -40,6 +40,7 @@ separate from product-specific test suites, promoting a clean, reusable architec
 │   │   │   │   +-- runner.py         # The systest runner module, which supports running tests using a feature area folder structure.
 │   │   │   │   +-- wrapper.py
 │   │   │   +-- __main__.py
+│   │   │   +-- completion.py
 │   │   │   +-- constants.py          # Defines Core Configuration and CLI Options.
 │   │   │   +-- exceptions.py
 │   │   │   +-- suite_manager.py

@@ -5,8 +5,9 @@ import site
 import subprocess
 import sys
 from pathlib import Path
-from typing import Dict, Iterator, List, Optional, Tuple
+from typing import Dict, Iterator, List, NamedTuple, Optional, Tuple, Union
 
+from dotenv import dotenv_values
 from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 
@@ -15,13 +16,127 @@ from .constants import (
     SUITE_DEFAULT_CONFIG_CONTENT,
     SUITE_DEFAULT_REQUIREMENTS_CONTENT,
     SUITE_FEATURES_FOLDER,
+    SUITE_LIB_FOLDER,
     SUITE_REQUIREMENTS_FILE,
     SUITE_SUFFIX,
     SUITE_SUPPORT_FOLDER,
+    VERSION,
 )
 from .exceptions import PipError, SuiteManagerError
 
 __all__ = ["install_suite_dependencies", "create_suite"]
+
+
+class SuiteConfig(NamedTuple):
+    """Suite configuration values parsed from a suite config file."""
+
+    framework_version: str = ""
+    """Framework version declared in the suite configuration."""
+    features_folder: str = ""
+    """Directory name that contains feature area folders."""
+    support_folder: str = ""
+    """Directory name that contains shared support code."""
+
+
+def parse_suite_conf(file_path: Path) -> SuiteConfig:
+    """Parses a .systestrc file.
+
+    Args:
+        file_path (Path): Path to the configuration file (.systestrc).
+
+    Returns:
+        SuiteConfig: Settings populated from the file or defaults.
+    """
+    config = {
+        "framework_version": VERSION,
+        "features_folder": SUITE_FEATURES_FOLDER,
+        "support_folder": SUITE_SUPPORT_FOLDER,
+    }
+
+    if file_path.is_file():
+        for key, val in (dotenv_values(file_path) or {}).items():
+            if val:
+                config[key] = val
+
+    return SuiteConfig(**config)
+
+
+class SuiteData(NamedTuple):
+    """Resolved suite paths and configuration values."""
+
+    name: str = ""
+    """Suite name without suffix."""
+    suite: str = ""
+    """Suite directory name with suffix."""
+    path: Path = Path()
+    """Absolute path to the suite directory."""
+    features_path: Path = Path()
+    """Absolute path to the suite features directory."""
+    support_path: Path = Path()
+    """Absolute path to the suite support directory."""
+    requirements_file: Path = Path()
+    """Absolute path to the suite requirements file."""
+    config_file: Path = Path()
+    """Absolute path to the suite configuration file."""
+    lib_path: Path = Path()
+    """Absolute path to the suite local dependency folder."""
+    framework_version: str = ""
+    """Framework version needed to run the test suite."""
+
+    def suite_exists(self) -> bool:
+        """Return True when the suite path exists on disk.
+
+        Returns:
+            bool: True if the suite directory exists.
+        """
+        return self.path.is_dir()
+
+    def suite_is_valide(self) -> bool:
+        """Return True when suite folders are valid.
+
+        Returns:
+            bool: True if feature and support folders exist.
+        """
+        return self.features_path.is_dir() and self.support_path.is_dir()
+
+
+def create_suite_data(suite_name: str, suites_directory: Union[str, Path]) -> SuiteData:
+    """Create a SuiteData object populated with suite paths.
+
+    Args:
+        suite_name (str): Name of the test suite.
+        suites_directory (Union[str, Path]): Root directory containing suites.
+
+    Returns:
+        SuiteData: Object containing paths and data for the test suite.
+
+    Raises:
+        SuiteManagerError: If the Test Suite name is invalid.
+    """
+    if suite_name.endswith(SUITE_SUFFIX):
+        suite_name = suite_name[: -len(SUITE_SUFFIX)]
+
+    if isinstance(suites_directory, str):
+        suites_directory = Path(suites_directory)
+
+    suite_path = suites_directory / f"{suite_name}{SUITE_SUFFIX}"
+
+    if suite_path.name != f"{suite_name}{SUITE_SUFFIX}":
+        raise SuiteManagerError(f"The specified Test Suite name is invalid: {suite_name!r}")
+
+    suite_config = parse_suite_conf(suite_path / SUITE_CONFIG_FILE)
+
+    return SuiteData(
+        name=suite_name,
+        suite=suite_path.name,
+        path=suite_path,
+        features_path=suite_path / suite_config.features_folder,
+        support_path=suite_path / suite_config.support_folder,
+        requirements_file=suite_path / SUITE_REQUIREMENTS_FILE,
+        config_file=suite_path / SUITE_CONFIG_FILE,
+        lib_path=suite_path / SUITE_LIB_FOLDER,
+        framework_version=suite_config.framework_version,
+    )
 
 
 def _call_pip(args: List[str], verbose: bool = False) -> None:

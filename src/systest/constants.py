@@ -95,9 +95,6 @@ SUITE_REQUIREMENTS_FILE: str = "requirements.txt"
 SUITE_LIB_FOLDER: str = ".lib"
 """Default local dependency folder for suites."""
 
-SUITE_ENV_FILE: str = ".env"
-"""Default environment filename for suites."""
-
 SUITE_DEFAULT_CONFIG_CONTENT: str = """# Specifies the framework version the test suite is guaranteed to support.
 # The framework uses this to ensure compatibility before execution.
 # framework_version=0.0.1

@@ -6,7 +6,7 @@ import os
 import shlex
 import sys
 from pathlib import Path
-from typing import Dict, Iterator, NamedTuple, Optional, Tuple, Union
+from typing import Dict, Iterator, Optional, Tuple, Union
 
 from behave.configuration import COLOR_CHOICES
 from behave.configuration import OPTIONS as BEHAVE_OPTIONS
@@ -22,56 +22,17 @@ from ..constants import (
     ENV_EXCLUDED_OPTIONS,
     ENV_SEQUENCE_OPTIONS,
     OPTIONS,
-    SUITE_CONFIG_FILE,
-    SUITE_ENV_FILE,
-    SUITE_FEATURES_FOLDER,
-    SUITE_LIB_FOLDER,
-    SUITE_REQUIREMENTS_FILE,
-    SUITE_SUFFIX,
-    SUITE_SUPPORT_FOLDER,
     USER_CONFIG,
     VERSION,
 )
+from ..exceptions import UnknownVersionType
+from ..suite_manager import SuiteData, create_suite_data
 from ..types import CommandArgs, DefaultValues, Options, override
+from ..utils import parse_version, run_from_source
 from .reporter.zephyr import ZephyrReporter
 from .wrapper import ReporterWrapper
 
 __all__ = ["Configuration"]
-
-
-class SuiteConfig(NamedTuple):
-    """Suite configuration values parsed from a suite config file."""
-
-    framework_version: str = ""
-    """Framework version declared in the suite configuration."""
-    features_folder: str = ""
-    """Directory name that contains feature area folders."""
-    support_folder: str = ""
-    """Directory name that contains shared support code."""
-
-
-def parse_suite_conf(file_path: Path) -> SuiteConfig:
-    """Parses a .systestrc file.
-
-    Args:
-        file_path (Path): Path to the configuration file (.systestrc).
-
-    Returns:
-        SuiteConfig: Settings populated from the file or defaults.
-    """
-    if file_path.is_file():
-        loaded_config = dotenv_values(file_path) or {}
-    else:
-        loaded_config = {}
-
-    sanitized_config = {
-        "framework_version": VERSION,
-        "features_folder": SUITE_FEATURES_FOLDER,
-        "support_folder": SUITE_SUPPORT_FOLDER,
-    }
-    sanitized_config.update(loaded_config)
-
-    return SuiteConfig(**sanitized_config)
 
 
 def build_environment_values(cli_file: Optional[Path] = None, verbose: Optional[bool] = None) -> Dict[str, str]:
@@ -108,7 +69,7 @@ def build_environment_values(cli_file: Optional[Path] = None, verbose: Optional[
         print("Skipping: User config file not found.")
 
     # Project `.env` File (Priority 3 - Only loaded if running from source)
-    if os.environ.get("_SYSTEST_SOURCE") == "true":
+    if run_from_source():
         project_config_file = Path(__file__).absolute().parents[3] / ".env"
         if project_config_file.exists():
             if verbose:
@@ -197,6 +158,33 @@ def load_environment_settings(
 
         if verbose:
             print(f"{config_name:<15} = {env_parsed_value!r} (ENV[{env_var}] = {env_value!r})")
+
+
+def auto_discover(
+    command_args: Optional[CommandArgs] = None, verbose: Optional[bool] = None
+) -> Tuple[Optional[Path], bool]:
+    """Discover config file and verbosity settings from CLI arguments.
+
+    Args:
+        command_args (Optional[CommandArgs]): Command-line arguments to inspect.
+        verbose (Optional[bool]): Overrides verbosity detection when provided.
+
+    Returns:
+        Tuple[Optional[Path], bool]: Tuple of CLI config path and verbosity flag.
+    """
+    # Config file from command-line args.
+    cli_config = None
+    if command_args and "--config" in command_args:
+        config_arg_pos = command_args.index("--config")
+        next_arg = command_args[config_arg_pos + 1]
+        if os.path.exists(next_arg):
+            cli_config = Path(next_arg)
+
+    # Verbose mode from command-line args.
+    if verbose is None:
+        verbose = ("-v" in command_args) or ("--verbose" in command_args)
+
+    return cli_config, verbose
 
 
 def iter_behave_options(behave_options: Options) -> Iterator[Options]:
@@ -314,7 +302,7 @@ class Configuration(BehaveConfiguration):
             verbose (Optional[bool]): Overrides the verbosity setting.
         """
         command_args = self.make_command_args(command_args, verbose)
-        cli_config, verbose = self.auto_discover(command_args, verbose)
+        cli_config, verbose = auto_discover(command_args, verbose)
 
         defaults = Configuration.make_defaults(**kwargs)
 
@@ -361,13 +349,9 @@ class Configuration(BehaveConfiguration):
         # Initialize other required attributes
         self.suites_directory: Union[str, Path] = Path()
         self.suite: Optional[str] = None
+        self.suite_data: SuiteData = SuiteData()
         self.create_suite_name: Optional[str] = None
         self.cycle_id: Optional[str] = None
-
-        self.suite_path: Path = Path()
-        self.suite_features_path: Path = Path()
-        self.suite_support_path: Path = Path()
-        self.suite_requirements_file: Optional[Path] = None
         self.run_version: str = VERSION
 
     @override
@@ -417,32 +401,6 @@ class Configuration(BehaveConfiguration):
                 command_args.insert(color_arg_pos + 1, "auto")
 
         return super().make_command_args(command_args=command_args, verbose=verbose)
-
-    def auto_discover(
-        self, command_args: Optional[CommandArgs] = None, verbose: Optional[bool] = None
-    ) -> Tuple[Optional[Path], bool]:
-        """Discover config file and verbosity settings from CLI arguments.
-
-        Args:
-            command_args (Optional[CommandArgs]): Command-line arguments to inspect.
-            verbose (Optional[bool]): Overrides verbosity detection when provided.
-
-        Returns:
-            Tuple[Optional[Path], bool]: Tuple of CLI config path and verbosity flag.
-        """
-        # Config file from command-line args.
-        cli_config = None
-        if command_args and "--config" in command_args:
-            config_arg_pos = command_args.index("--config")
-            next_arg = command_args[config_arg_pos + 1]
-            if os.path.exists(next_arg):
-                cli_config = Path(next_arg)
-
-        # Verbose mode from command-line args.
-        if verbose is None:
-            verbose = ("-v" in command_args) or ("--verbose" in command_args)
-
-        return cli_config, verbose
 
     @classmethod
     def parse_systest_args(
@@ -502,7 +460,7 @@ class Configuration(BehaveConfiguration):
             parser (argparse.ArgumentParser): Parser for reporting CLI errors.
 
         Raises:
-            ConfigError: If suite paths or folders are invalid.
+            ConfigError: If the suite paths, folders, or version are invalid.
         """
         is_utility_mode = any(
             [
@@ -521,44 +479,34 @@ class Configuration(BehaveConfiguration):
                 parser.error("No Test Suite specified. Use --help for more info.")
             return
 
-        # Suite Directory
-        self.suite_path = self.suites_directory / f"{self.suite}{SUITE_SUFFIX}"
-        if not self.suite_path.is_dir():
+        self.suite_data = create_suite_data(self.suite, self.suites_directory)
+
+        if not self.suite_data.suite_exists():
             raise ConfigError(
                 "The test suite directory was not found for the test suite "
-                f"{self.suite!r} (expected: {self.suite_path!r})"
+                f"{self.suite_data.name!r} (expected: {self.suite_data.path!r})"
             )
 
-        # Load Suite-Specific Configuration
-        suite_config = parse_suite_conf(self.suite_path / SUITE_CONFIG_FILE)
+        if not self.suite_data.suite_is_valide():
+            if not self.suite_data.features_path.is_dir():
+                raise ConfigError(
+                    "The test suite features directory was not found for the test suite "
+                    f"{self.suite_data.name!r} (expected: {self.suite_data.features_path!r})"
+                )
 
-        # Determine the location of the feature area folders.
-        self.suite_features_path = self.suite_path / suite_config.features_folder
-        if not self.suite_features_path.is_dir():
-            raise ConfigError(
-                "The test suite features directory was not found for the test suite "
-                f"{self.suite!r} (expected: {self.suite_features_path!r})"
-            )
-
-        # Determine the location of the support folder.
-        self.suite_support_path = self.suite_path / suite_config.support_folder
-        if not self.suite_support_path.is_dir():
             raise ConfigError(
                 "The test suite support directory was not found for the test suite "
-                f"{self.suite!r} (expected: {self.suite_support_path!r})"
+                f"{self.suite_data.name!r} (expected: {self.suite_data.support_path!r})"
             )
 
-        # Set the location of the requirements file.
-        self.suite_requirements_file = self.suite_path / SUITE_REQUIREMENTS_FILE
-
-        # Set the location of the lib folder.
-        self.suite_lib_path = self.suite_path / SUITE_LIB_FOLDER
-
-        # Set the location of the environment file.
-        self.suite_env_file = self.suite_path / SUITE_ENV_FILE
-
-        # Set the request framework version
-        self.run_version = suite_config.framework_version
+        try:
+            parse_version(self.suite_data.framework_version)
+        except UnknownVersionType as e:
+            raise ConfigError(
+                f"The framework_version specified in {self.suite_data.name!r} "
+                f"is invalid: {self.suite_data.framework_version!r}"
+            ) from e
+        self.run_version = self.suite_data.framework_version
 
     def setup_systest_reporters(self) -> None:
         """Attach systest-specific reporters based on configuration."""

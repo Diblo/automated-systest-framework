@@ -10,6 +10,7 @@ from behave import __version__ as behave_version
 from behave.__main__ import run_behave
 from behave.exception import ConfigError, NotSupportedWarning, TagExpressionError
 
+from .completion import autocomplete, is_argcomplete_request
 from .constants import VERSION
 from .exceptions import PipError, SuiteManagerError
 from .suite_manager import create_suite, install_suite_dependencies
@@ -53,10 +54,10 @@ def handle_test_environment(config: Configuration) -> Generator[None, None, None
     os.environ["SYSTEST_RUN_VERSION"] = config.run_version
 
     # Install dependencies
-    install_suite_dependencies(config.suite_lib_path, config.suite_requirements_file, config.verbose)
+    install_suite_dependencies(config.suite_data.lib_path, config.suite_data.requirements_file, config.verbose)
 
     # Add suite path to sys.path so 'support' can be imported by 'steps'
-    suite_path_str = str(config.suite_path)
+    suite_path_str = str(config.suite_data.path)
     path_added = False
 
     if suite_path_str not in sys.path:
@@ -105,6 +106,10 @@ def main() -> int:
         int: Exit status code (0 for success, 1 for failure).
     """
     try:
+        if is_argcomplete_request():
+            autocomplete(sys.argv[1:])
+            return 0
+
         config = Configuration(load_config=False)
         return run_systest(config)
     except ConfigError as e:

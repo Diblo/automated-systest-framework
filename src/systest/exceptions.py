@@ -7,3 +7,7 @@ class SuiteManagerError(Exception):
 
 class PipError(Exception):
     """Custom exception raised when a pip command fails."""
+
+
+class UnknownVersionType(Exception):
+    """Custom exception raised when a version string cannot be parsed."""

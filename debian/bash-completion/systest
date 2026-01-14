@@ -1,0 +1,4 @@
+# Bash completion for systest.
+if [ -x /usr/share/systest/venv/bin/register-python-argcomplete ]; then
+  eval "$(/usr/share/systest/venv/bin/register-python-argcomplete --shell bash systest)"
+fi

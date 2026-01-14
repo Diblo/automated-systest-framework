@@ -23,6 +23,7 @@ from src.systest.constants import (
     SUITE_SUPPORT_FOLDER,
     VERSION,
 )
+from src.systest.suite_manager import SuiteData, create_suite_data
 from src.systest.systest_behave.configuration import Configuration, iter_behave_options
 
 # --- Types ---
@@ -122,7 +123,7 @@ OptionsMap = Tuple[OptionConfig, ...]
 
 # --- Constants ---
 
-TEST_VERSION = f"{VERSION}.test"
+TEST_VERSION = "448.448.448-dev"
 TEST_FEATURES_FOLDER = f"{SUITE_FEATURES_FOLDER}.test"
 TEST_SUPPORT_FOLDER = f"{SUITE_SUPPORT_FOLDER}.test"
 TEST_SCRIPT_NAME = "systest"
@@ -268,15 +269,13 @@ class SuiteHandler:
 
         # Attributes set up by the setup() method
         self.suites_directory: Path = tmp_path / "test_suites"
-        self.suite: str = ""
-        self.suite_folder: str = ""
-        self.features_folder: str = ""
-        self.support_folder: str = ""
+        self._suite_name: str = ""
+        self._suite_path: Path = Path()
+        self._features_folder: str = ""
+        self._support_folder: str = ""
 
-        self.suite_path: Path = Path()
-        self.suite_config_file: Path = Path()
-        self.suite_features_path: Path = Path()
-        self.suite_support_path: Path = Path()
+        # Attributes set up by the create() method
+        self.suite: SuiteData = SuiteData()
 
     def create_suite_folder_name(self, suite_name: str) -> str:
         """Return the suite folder name derived from a suite name.
@@ -357,16 +356,10 @@ class SuiteHandler:
             support_folder (Optional[str]): Custom support folder name. Defaults to TEST_SUPPORT_FOLDER.
         """
         # Define the mock suite name and the expected suite folder name.
-        self.suite = suite_name
-        self.suite_folder = self.create_suite_folder_name(suite_name)
-        self.features_folder = features_folder or TEST_FEATURES_FOLDER
-        self.support_folder = support_folder or TEST_SUPPORT_FOLDER
-
-        # Define all absolute paths based on the structure
-        self.suite_path = self.suites_directory / self.suite_folder
-        self.suite_config_file = self.suite_path / SUITE_CONFIG_FILE
-        self.suite_features_path = self.suite_path / self.features_folder
-        self.suite_support_path = self.suite_path / self.support_folder
+        self._suite_name = suite_name
+        self._suite_path = self.suites_directory / self.create_suite_folder_name(suite_name)
+        self._features_folder = features_folder or TEST_FEATURES_FOLDER
+        self._support_folder = support_folder or TEST_SUPPORT_FOLDER
 
     def create(self) -> None:
         """Creates the physical test suite directory structure and the configuration file.
@@ -374,25 +367,27 @@ class SuiteHandler:
         Raises:
             FileExistsError: If the suite directory already exists.
         """
-        if self.suite_path.exists():
-            raise FileExistsError(f"Suite directory already exists: {self.suite_path}")
+        if self._suite_path.exists():
+            raise FileExistsError(f"Suite directory already exists: {self._suite_path}")
 
         # Create necessary directories. 'parents=True' for if the suites directory doesn't exist.
-        self.suite_features_path.mkdir(parents=True)
-        self.suite_support_path.mkdir()
+        (self._suite_path / self._features_folder).mkdir(parents=True)
+        (self._suite_path / self._support_folder).mkdir()
 
         # Create the suite configuration file
         config_file_content = f"""
 framework_version={TEST_VERSION}
-features_folder={self.features_folder}
-support_folder={self.support_folder}
+features_folder={self._features_folder}
+support_folder={self._support_folder}
 """
-        self.suite_config_file.write_text(config_file_content.strip(), encoding="utf-8")
+        (self._suite_path / SUITE_CONFIG_FILE).write_text(config_file_content.strip())
+
+        self.suite = create_suite_data(self._suite_name, self.suites_directory)
 
     def delete(self) -> None:
         """Removes the entire test suites directory."""
-        if self.suite_path.exists():
-            shutil.rmtree(self.suite_path)
+        if self._suite_path.exists():
+            shutil.rmtree(self._suite_path)
 
 
 class ConfigurationClassHelper:
@@ -445,6 +440,10 @@ class ConfigurationClassHelper:
         # Apply patches. 'clear=True' ensures a clean environment for each test run.
         self.mocker.patch.dict("os.environ", envs, clear=True)
 
+    def disable_config(self) -> None:
+        """Disable dotenv_values in configuration module from loading existing configs."""
+        self.mocker.patch("src.systest.systest_behave.configuration.dotenv_values", return_value=None)
+
     def create_configuration(
         self,
         suite_handler: Optional[SuiteHandler] = None,
@@ -464,14 +463,13 @@ class ConfigurationClassHelper:
         """
         _args = []
         if suite_handler is not None:
-            _args.extend(
-                ["--suite", suite_handler.suite_data.name, "--suites-dir", str(suite_handler.suites_directory)]
-            )
+            _args.extend(["--suite", suite_handler.suite.name, "--suites-dir", str(suite_handler.suites_directory)])
         if args is not None:
             _args.extend(args)
 
         self.set_args(_args)
         self.set_envs(envs)
+        self.disable_config()
 
         # The Configuration() initializer will read the patched sys.argv and os.environ
         return Configuration()
@@ -603,7 +601,7 @@ def test_configuration_basic(  # pylint: disable=redefined-outer-name
         features_folder=SUITE_FEATURES_FOLDER, support_folder=SUITE_SUPPORT_FOLDER
     )
     # Remove the config file to ensure default (not config-loaded) version is used
-    mock_test_suite.suite_config_file.unlink()
+    mock_test_suite.suite.config_file.unlink()
 
     # Initialize Configuration
     config = configuration_class_helper.create_configuration(mock_test_suite)
@@ -614,18 +612,22 @@ def test_configuration_basic(  # pylint: disable=redefined-outer-name
         config.suites_directory == mock_test_suite.suites_directory
     ), f"Expected suites_directory {mock_test_suite.suites_directory!r}, got {config.suites_directory!r}"
 
-    assert config.suite == mock_test_suite.suite, f"Expected suite name {mock_test_suite.suite!r}, got {config.suite!r}"
     assert (
-        config.suite_path == mock_test_suite.suite_path
-    ), f"Expected suite_path {mock_test_suite.suite_path!r}, got {config.suite_path!r}"
+        config.suite == mock_test_suite.suite.name
+    ), f"Expected suite name {mock_test_suite.suite.name!r}, got {config.suite!r}"
+    assert (
+        config.suite_data.path == mock_test_suite.suite.path
+    ), f"Expected suite_path {mock_test_suite.suite.path!r}, got {config.suite_data.path!r}"
 
     # Check that default feature/support folder names were used
-    assert (
-        config.suite_features_path == mock_test_suite.suite_features_path
-    ), f"Expected suite_features_path {mock_test_suite.suite_features_path!r}, got {config.suite_features_path!r}"
-    assert (
-        config.suite_support_path == mock_test_suite.suite_support_path
-    ), f"Expected suite_support_path {mock_test_suite.suite_support_path!r}, got {config.suite_support_path!r}"
+    assert config.suite_data.features_path == mock_test_suite.suite.features_path, (
+        f"Expected suite_features_path {mock_test_suite.suite.features_path!r}, "
+        f"got {config.suite_data.features_path!r}"
+    )
+    assert config.suite_data.support_path == mock_test_suite.suite.support_path, (
+        f"Expected suite_support_path {mock_test_suite.suite.support_path!r}, "
+        f"got {config.suite_data.support_path!r}"
+    )
 
     # framework_version should fall back to the application default VERSION as config file was removed.
     assert config.run_version == VERSION, f"Expected default framework_version {VERSION!r}, got {config.run_version!r}"
@@ -684,12 +686,14 @@ class TestConfigurationSources:
         config = configuration_class_helper.create_configuration(mock_test_suite)
 
         # 3. Assertions: Check that path resolution used values from the config file
-        assert (
-            config.suite_features_path == mock_test_suite.suite_features_path
-        ), f"Expected suite_features_path {mock_test_suite.suite_features_path!r}, got {config.suite_features_path!r}"
-        assert (
-            config.suite_support_path == mock_test_suite.suite_support_path
-        ), f"Expected suite_support_path {mock_test_suite.suite_support_path!r}, got {config.suite_support_path!r}"
+        assert config.suite_data.features_path == mock_test_suite.suite.features_path, (
+            f"Expected suite_features_path {mock_test_suite.suite.features_path!r}, "
+            f"got {config.suite_data.features_path!r}"
+        )
+        assert config.suite_data.support_path == mock_test_suite.suite.support_path, (
+            f"Expected suite_support_path {mock_test_suite.suite.support_path!r}, "
+            f"got {config.suite_data.support_path!r}"
+        )
 
         # Check that the framework version was loaded from the config file
         assert (
@@ -841,16 +845,17 @@ class TestConfigurationOthers:
 
         # --- Assertions ---
         # The value must come from the config file (TEST_VERSION), ignoring ENV/CLI attempts to override.
-        assert (
-            config.run_version == TEST_VERSION
-        ), f"Suite config version was incorrectly overridden. Expected {TEST_VERSION!r}, got {config.run_version!r}"
+        assert config.run_version == TEST_VERSION, (
+            f"Suite config version was incorrectly overridden. Expected {TEST_VERSION!r}, "
+            f"got {config.run_version!r}"
+        )
 
         # Asserting that the correct paths were loaded (based on config file), ignoring ENV
         assert (
-            mock_test_suite.suite_features_path == config.suite_features_path
+            mock_test_suite.suite.features_path == config.suite_data.features_path
         ), "Features path mismatch: Expected path from suite config, but was overridden."
         assert (
-            mock_test_suite.suite_support_path == config.suite_support_path
+            mock_test_suite.suite.support_path == config.suite_data.support_path
         ), "Support path mismatch: Expected path from suite config, but was overridden."
 
     def test_utility_mode(  # pylint: disable=redefined-outer-name
@@ -982,23 +987,23 @@ class TestConfigurationErrors:
 
         # Test 2: The Test Suite Directory is missing ('path_error-0.0.1_suite')
         _run(
-            mock_test_suite.suite_path,
+            mock_test_suite.suite.path,
             "The test suite directory was not found for the test suite "
-            f"{mock_test_suite.suite!r} (expected: {mock_test_suite.suite_path!r})",
+            f"{mock_test_suite.suite.name!r} (expected: {mock_test_suite.suite.path!r})",
         )
 
         # Test 3: The Test Suite Features Directory is missing
         _run(
-            mock_test_suite.suite_features_path,
+            mock_test_suite.suite.features_path,
             "The test suite features directory was not found for the test suite "
-            f"{mock_test_suite.suite!r} (expected: {mock_test_suite.suite_features_path!r})",
+            f"{mock_test_suite.suite.name!r} (expected: {mock_test_suite.suite.features_path!r})",
         )
 
         # Test 4: The Test Suite Support Directory is missing
         _run(
-            mock_test_suite.suite_support_path,
+            mock_test_suite.suite.support_path,
             "The test suite support directory was not found for the test suite "
-            f"{mock_test_suite.suite!r} (expected: {mock_test_suite.suite_support_path!r})",
+            f"{mock_test_suite.suite.name!r} (expected: {mock_test_suite.suite.support_path!r})",
         )
 
     def test_unrecognized_argument(  # pylint: disable=redefined-outer-name

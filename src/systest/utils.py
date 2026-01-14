@@ -3,15 +3,29 @@
 import os
 from enum import Enum
 
-from packaging.version import parse
+from packaging.version import InvalidVersion, Version, parse
+
+from .exceptions import UnknownVersionType
+
+
+def run_from_source() -> bool:
+    """Check if the process is running from source mode.
+
+    Returns:
+        bool: True when the `_SYSTEST_SOURCE` environment flag is set to "true".
+    """
+    return os.environ.get("_SYSTEST_SOURCE") == "true"
 
 
 def run_version() -> str:
     """Retrieves the system test running version string from the environment.
 
-    :raises RuntimeError: If the 'SYSTEST_RUN_VERSION' environment variable is not set,
-                          indicating the required application environment setup is missing.
-    :returns: The string value of SYSTEST_RUN_VERSION.
+    Returns:
+        str: The string value of the 'SYSTEST_RUN_VERSION' environment variable.
+
+    Raises:
+        RuntimeError: If the 'SYSTEST_RUN_VERSION' environment variable is not set,
+            indicating the required application environment setup is missing.
     """
     version = os.environ.get("SYSTEST_RUN_VERSION")
 
@@ -21,16 +35,34 @@ def run_version() -> str:
     return version
 
 
+def parse_version(version: str) -> Version:
+    """Parses a version string into a Version object.
+
+    Args:
+        version (str): The version string to parse.
+
+    Returns:
+        Version: The parsed version object.
+
+    Raises:
+        UnknownVersionType: If the provided version string is invalid.
+    """
+    try:
+        return parse(version)
+    except InvalidVersion as e:
+        raise UnknownVersionType(f"Failed to parse version string: '{version}'") from e
+
+
 class CompareVersion(Enum):
     """Represents the result of comparing two versions."""
 
-    LESS: int = -1
+    LESS = -1
     """Indicates that version 1 is chronologically older than version 2 (v1 < v2)."""
 
-    EQUAL: int = 0
+    EQUAL = 0
     """Indicates that version 1 is chronologically the same as version 2 (v1 == v2)."""
 
-    GREATER: int = 1
+    GREATER = 1
     """Indicates that version 1 is chronologically newer than version 2 (v1 > v2)."""
 
     def __str__(self) -> str:
@@ -38,8 +70,7 @@ class CompareVersion(Enum):
 
 
 def compare_versions(version1: str, version2: str) -> CompareVersion:
-    """Compares two version and returns an enumeration member representing
-    the result.
+    """Compares two version strings and returns the comparison result.
 
     Args:
         version1 (str): The first version string to compare.
@@ -54,8 +85,8 @@ def compare_versions(version1: str, version2: str) -> CompareVersion:
         >>> compare_versions("2.0.0", "1.9.9")
         CompareVersion.GREATER
     """
-    v1 = parse(version1)
-    v2 = parse(version2)
+    v1 = parse_version(version1)
+    v2 = parse_version(version2)
 
     if v1 < v2:
         return CompareVersion.LESS
@@ -84,8 +115,7 @@ class VersionDiff(Enum):
 
 
 def version_difference(version1: str, version2: str) -> VersionDiff:
-    """Determines the semantic difference level (Major, Minor, or Patch)
-    between two version strings.
+    """Determines the semantic difference level between two version strings.
 
     The comparison follows the strict Major.Minor.Patch structure.
 
@@ -104,8 +134,8 @@ def version_difference(version1: str, version2: str) -> VersionDiff:
         >>> version_difference("1.2.0", "1.2.1")
         VersionDiff.PATCH
     """
-    v1 = parse(version1)
-    v2 = parse(version2)
+    v1 = parse_version(version1)
+    v2 = parse_version(version2)
 
     # Check for Major difference first
     if v1.major != v2.major:
